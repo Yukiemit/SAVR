@@ -27,7 +27,7 @@ export default function Navbar() {
           Partners
         </NavLink>
 
-        <NavLink to="/media" className={linkClass}>
+        <NavLink to="/mediapg" className={linkClass}>
           Media
         </NavLink>
 
