@@ -15,7 +15,7 @@ export default function Navbar() {
       {/* NAV LINKS */}
       <div className="nav-links flex gap-3">
 
-        <NavLink to="/home" className={linkClass}>
+        <NavLink to="/" className={linkClass}>
           Home
         </NavLink>
 
