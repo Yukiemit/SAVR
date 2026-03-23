@@ -11,6 +11,14 @@ import Register from "./pages/Register";
 import RegisterDonor from "./pages/RegisterDonor";
 import RegisterOrg from "./pages/RegisterOrg";
 
+import StaffDashboard from "./pages/Staff/Staff_Dashboard";
+import StaffDonataionRequest from "./pages/Staff/Staff_DonationRequest";
+
+import DonorDashboard from "./pages/Donor/Donor_Dashboard";
+
+import AdminDashboard from "./pages/Admin/Admin_Dashboard";
+
+
 
 function App() {
   return (
@@ -28,7 +36,13 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/register/donor" element={<RegisterDonor />} />
         <Route path="/register/org" element={<RegisterOrg />} />
-        
+
+        <Route path="/staff/dashboard" element={<StaffDashboard />} />
+        <Route path="/staff/donations/request" element={<StaffDonataionRequest />} />
+
+        <Route path="/donor/dashboard" element={<DonorDashboard />} />
+
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
       </Routes>
     </BrowserRouter>
