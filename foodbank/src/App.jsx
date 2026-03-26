@@ -13,7 +13,7 @@ import RegisterOrg from "./pages/RegisterOrg";
 
 import StaffDashboard from "./pages/Staff/Staff_Dashboard";
 import StaffDonataionRequest from "./pages/Staff/Staff_DonationRequest";
-
+import Staff_DonationDrive from "./pages/Staff/Staff_DonationDrive";
 import DonorDashboard from "./pages/Donor/Donor_Dashboard";
 
 import AdminDashboard from "./pages/Admin/Admin_Dashboard";
@@ -39,6 +39,8 @@ function App() {
 
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
         <Route path="/staff/donations/request" element={<StaffDonataionRequest />} />
+        <Route path="/staff/donations/drive" element={<Staff_DonationDrive />} />
+
 
         <Route path="/donor/dashboard" element={<DonorDashboard />} />
 
