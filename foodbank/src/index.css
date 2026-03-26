@@ -2144,6 +2144,294 @@ body {
     margin-top: 60px;
   }
 
+  /* /-/-/-/-/-/-/-/ STAFF : DONATION DRIVE /-/-/-/-/-/-/-/ */
+
+.dd-drive-wrapper {
+  min-height: 100vh;
+  background: #f9f9f7;
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.dd-drive-main {
+  flex: 1;
+  padding: 36px 50px 60px;
+}
+
+/* ── PAGE HEADER ── */
+.dd-drive-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.dd-drive-heading {
+  font-size: 36px;
+  font-weight: 900;
+  color: #222;
+  margin: 0;
+}
+
+/* ── TOOLBAR RIGHT ── */
+.dd-drive-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── ADD NEW ITEM BUTTON ── */
+.dd-drive-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.dd-drive-add-btn:hover {
+  border-color: #f4b942;
+  background: #fffbf0;
+  color: #222;
+}
+
+.dd-drive-add-btn .material-symbols-rounded {
+  font-size: 18px;
+  color: #f4b942;
+}
+
+/* ── TABLE WRAPPER ── */
+.dd-drive-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #eee;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+/* ── TABLE ── */
+.dd-drive-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 1000px;
+}
+
+.dd-drive-table thead tr {
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.dd-drive-table th {
+  padding: 14px 16px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #888;
+  letter-spacing: 0.8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dd-drive-table td {
+  padding: 14px 16px;
+  color: #333;
+  border-bottom: 1px solid #f5f5f5;
+  vertical-align: middle;
+  font-size: 13px;
+}
+
+.dd-drive-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.dd-drive-table tbody tr:hover {
+  background: #fafaf8;
+}
+
+/* ── NEW ROW HIGHLIGHT ── */
+.dd-drive-row-new {
+  background: #fffdf5 !important;
+}
+
+.dd-drive-row-new td {
+  border-bottom: 1px solid #f4e9c8 !important;
+}
+
+/* ── STATUS SELECT (existing rows) ── */
+.dd-drive-status-select {
+  border-radius: 20px;
+  border: 1.5px solid;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  text-align: center;
+}
+
+/* ── TYPE BADGE ── */
+.dd-drive-type-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── DATE BADGE ── */
+.dd-drive-date-badge {
+  display: inline-block;
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── DRIVE TITLE TEXT ── */
+.dd-drive-title-text {
+  font-weight: 600;
+  color: #222;
+}
+
+/* ── EMAIL ── */
+.dd-drive-email {
+  color: #555;
+  font-size: 12px;
+}
+
+/* ── INLINE EDIT INPUTS ── */
+.dd-drive-input {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  min-width: 80px;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+  background: white;
+}
+
+.dd-drive-input:focus {
+  border-color: #2e7d32;
+}
+
+.dd-drive-select-sm {
+  cursor: pointer;
+}
+
+.dd-drive-date-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dd-drive-date-sep {
+  color: #aaa;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ── ROW ACTION BUTTONS ── */
+.dd-drive-actions-cell {
+  white-space: nowrap;
+}
+
+.dd-drive-row-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.dd-drive-save-btn {
+  background: #2e7d32;
+  color: white;
+  border: none;
+  border-radius: 16px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+
+.dd-drive-save-btn:hover:not(:disabled) {
+  background: #1b5e20;
+}
+
+.dd-drive-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dd-drive-cancel-btn {
+  background: white;
+  color: #888;
+  border: 1px solid #ddd;
+  border-radius: 16px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.dd-drive-cancel-btn:hover:not(:disabled) {
+  border-color: #e74c3c;
+  color: #e74c3c;
+}
+
+/* ── EMPTY STATE ── */
+.dd-drive-empty {
+  text-align: center;
+  color: #aaa;
+  font-size: 14px;
+  font-style: italic;
+  padding: 40px 0;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .dd-drive-main {
+    padding: 24px 16px 40px;
+  }
+
+  .dd-drive-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dd-drive-toolbar-right {
+    width: 100%;
+  }
+
+  .dr-search {
+    width: 100%;
+  }
+}
+
+
 /* /-/-/-/-/-/-/-/ DONOR : DASHBOARD /-/-/-/-/-/-/-/ */
 
 .dd-wrapper {
