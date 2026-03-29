@@ -2898,6 +2898,1331 @@ body {
   }
 }
 
+/* /-/-/-/-/-/-/-/ DONOR : DONATE PAGE /-/-/-/-/-/-/-/ */
+
+.donate-wrapper {
+  min-height: 100vh;
+  background: #f9f9f7;
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.donate-main {
+  padding: 40px 50px 60px !important;
+}
+
+/* ── PAGE TITLE ── */
+.donate-title-section {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.donate-page-title {
+  font-size: 42px;
+  font-weight: 900;
+  color: #222;
+  margin: 0 0 16px;
+  letter-spacing: 0.5px;
+}
+
+.donate-title-divider {
+  border: none;
+  border-top: 1.5px solid #d0cdc6;
+  margin: 0 auto;
+  max-width: 860px;
+}
+
+/* ── DONATION TYPE CARDS ── */
+.donate-cards-row {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  margin: 0 auto 36px;
+  max-width: 900px;
+  flex-wrap: wrap;
+}
+
+.donate-type-card {
+  background: #2e7d32;
+  border: none;
+  border-radius: 22px;
+  width: 250px;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  cursor: pointer;
+  padding: 32px 20px;
+  box-shadow: 0 4px 18px rgba(46, 125, 50, 0.22);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
+}
+
+.donate-type-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 70% 70%, rgba(255,255,255,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.donate-type-card:hover,
+.donate-type-card-hovered {
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: 0 12px 32px rgba(46, 125, 50, 0.36);
+  background: #256427;
+}
+
+/* ── ICON WRAPPER ── */
+.donate-type-icon-wrap {
+  width: 110px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.donate-type-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: brightness(0) invert(1);  /* makes PNG white on the green card */
+  transition: transform 0.22s ease;
+}
+
+.donate-type-card:hover .donate-type-icon-img {
+  transform: scale(1.08);
+}
+
+/* ── LABEL ── */
+.donate-type-label {
+  font-size: 16px;
+  font-weight: 800;
+  color: white;
+  text-align: center;
+  letter-spacing: 0.3px;
+  line-height: 1.3;
+}
+
+/* ── SECTION DIVIDER ── */
+.donate-section-divider {
+  border: none;
+  border-top: 1.5px solid #d0cdc6;
+  margin: 0 auto 30px;
+  max-width: 860px;
+}
+
+/* ── UPCOMING PICKUPS HEADER ── */
+.donate-pickups-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.donate-pickups-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: #222;
+  margin: 0;
+}
+
+.donate-viewall-btn {
+  background: #c96a2e;
+  color: white;
+  border: none;
+  border-radius: 22px;
+  padding: 10px 26px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+  box-shadow: 0 3px 10px rgba(201, 106, 46, 0.28);
+}
+
+.donate-viewall-btn:hover {
+  background: #b55a24;
+  transform: scale(1.04);
+}
+
+.donate-viewall-collapse {
+  background: #888;
+  box-shadow: none;
+}
+
+.donate-viewall-collapse:hover {
+  background: #666;
+}
+
+/* ── PICKUPS LIST ── */
+.donate-pickups-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.donate-pickups-loading,
+.donate-pickups-empty {
+  font-size: 14px;
+  color: #aaa;
+  font-style: italic;
+  padding: 16px 0;
+}
+
+/* ── SINGLE PICKUP ITEM ── */
+.donate-pickup-item {
+  background: white;
+  border: 1.5px solid #e0ddd5;
+  border-radius: 14px;
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.donate-pickup-item:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  border-color: #c8c4bc;
+}
+
+.donate-pickup-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.donate-pickup-datetime {
+  font-size: 15px;
+  font-weight: 800;
+  color: #222;
+  margin: 0;
+}
+
+.donate-pickup-info {
+  font-size: 13px;
+  color: #555;
+  margin: 0;
+}
+
+/* ── EDIT / DELETE ── */
+.donate-pickup-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.donate-pickup-action-btn {
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 0;
+  font-family: inherit;
+  transition: color 0.18s;
+}
+
+.donate-pickup-cancel {
+  color: #555;
+}
+
+.donate-pickup-cancel:hover:not(:disabled) {
+  color: #c0392b;
+  text-decoration: underline;
+}
+
+.donate-pickup-cancel:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .donate-main {
+    padding: 28px 20px 40px !important;
+  }
+
+  .donate-cards-row {
+    gap: 18px;
+  }
+
+  .donate-type-card {
+    width: 100%;
+    max-width: 320px;
+    min-height: 200px;
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 20px 24px;
+    gap: 20px;
+  }
+
+  .donate-type-icon-wrap {
+    width: 70px;
+    height: 70px;
+    flex-shrink: 0;
+  }
+
+  .donate-page-title {
+    font-size: 30px;
+  }
+
+  .donate-pickups-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .donate-pickup-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* /-/-/-/-/-/-/-/ DONOR : SERVICE DONATION PAGE /-/-/-/-/-/-/-/ */
+
+.ds-wrapper {
+  min-height: 100vh;
+  background: #f9f9f7;
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.ds-page {
+  flex: 1;
+  padding: 40px 50px 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── PAGE TITLE ── */
+.ds-title-section {
+  width: 100%;
+  max-width: 740px;
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.ds-page-title {
+  font-size: 40px;
+  font-weight: 900;
+  color: #222;
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.ds-title-icon {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+}
+
+.ds-title-divider {
+  border: none;
+  border-top: 1.5px solid #d0cdc6;
+  margin: 0;
+}
+
+/* ── FORM CARD ── */
+.ds-form-card {
+  background: linear-gradient(145deg, #f4b942, #e8a830);
+  border-radius: 24px;
+  padding: 32px 36px;
+  width: 100%;
+  max-width: 740px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 8px 32px rgba(244, 185, 66, 0.35);
+}
+
+/* ── ROWS ── */
+.ds-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.ds-row-type {
+  align-items: flex-start;
+}
+
+.ds-row-contact {
+  margin-top: 0;
+}
+
+/* ── FIELD ── */
+.ds-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ds-field-grow {
+  flex: 2;
+}
+
+.ds-field-qty {
+  flex: 0 0 120px;
+}
+
+.ds-field-inline {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── LABEL ── */
+.ds-label {
+  font-size: 14px;
+  font-weight: 800;
+  color: white;
+  letter-spacing: 0.2px;
+}
+
+.ds-optional {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+  font-style: italic;
+}
+
+/* ── INPUT BASE ── */
+.ds-input {
+  background: white;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #333;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ds-input:focus {
+  border-color: #2e7d32;
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.15);
+}
+
+.ds-input::placeholder {
+  color: #bbb;
+}
+
+.ds-input-center {
+  text-align: center;
+}
+
+.ds-select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23999' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+
+/* ── TEXTAREA ── */
+.ds-textarea {
+  resize: vertical;
+  min-height: 90px;
+  text-align: left;
+}
+
+/* ── ERROR STATE ── */
+.ds-input-error {
+  border-color: #e74c3c !important;
+  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.15) !important;
+}
+
+.ds-error {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff0ee;
+  background: rgba(231, 76, 60, 0.55);
+  border-radius: 6px;
+  padding: 3px 8px;
+  margin: 0;
+}
+
+/* ── SUBMIT ROW ── */
+.ds-submit-row {
+  width: 100%;
+  max-width: 740px;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.ds-submit-btn {
+  background: #2e7d32;
+  color: white;
+  font-size: 16px;
+  font-weight: 800;
+  font-family: inherit;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 48px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 16px rgba(46, 125, 50, 0.3);
+  letter-spacing: 0.5px;
+}
+
+.ds-submit-btn:hover:not(:disabled) {
+  background: #1b5e20;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(46, 125, 50, 0.4);
+}
+
+.ds-submit-btn:disabled {
+  background: #aaa;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── SUCCESS SCREEN ── */
+.ds-success-screen {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+.ds-success-card {
+  background: white;
+  border-radius: 24px;
+  padding: 50px 60px;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.1);
+  max-width: 460px;
+  width: 100%;
+  animation: ds-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes ds-pop {
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.ds-success-icon {
+  font-size: 72px;
+  color: #2e7d32;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.ds-success-title {
+  font-size: 26px;
+  font-weight: 900;
+  color: #2e7d32;
+  margin: 0 0 10px;
+}
+
+.ds-success-sub {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 28px;
+  line-height: 1.6;
+}
+
+.ds-success-btns {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.ds-success-btn-home {
+  background: #f4b942;
+  color: #222;
+  font-weight: 700;
+  font-size: 14px;
+  font-family: inherit;
+  border: none;
+  border-radius: 30px;
+  padding: 12px 28px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.ds-success-btn-home:hover {
+  background: #e0a830;
+  transform: scale(1.03);
+}
+
+.ds-success-btn-dash {
+  background: #2e7d32;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  font-family: inherit;
+  border: none;
+  border-radius: 30px;
+  padding: 12px 28px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.ds-success-btn-dash:hover {
+  background: #1b5e20;
+  transform: scale(1.03);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .ds-page {
+    padding: 28px 20px 40px;
+  }
+
+  .ds-form-card {
+    padding: 24px 20px;
+  }
+
+  .ds-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ds-field-qty {
+    flex: 1;
+    width: 100%;
+  }
+
+  .ds-field-grow {
+    flex: 1;
+  }
+
+  .ds-row-contact {
+    flex-direction: column;
+  }
+
+  .ds-page-title {
+    font-size: 28px;
+  }
+
+  .ds-submit-row {
+    justify-content: center;
+  }
+
+  .ds-success-card {
+    padding: 36px 24px;
+  }
+}
+
+/* /-/-/-/-/-/-/-/ DONOR : FINANCIAL DONATION PAGE /-/-/-/-/-/-/-/ */
+
+.df-wrapper {
+  min-height: 100vh;
+  background: #f9f9f7;
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.df-page {
+  flex: 1;
+  padding: 40px 50px 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── PAGE TITLE ── */
+.df-title-section {
+  width: 100%;
+  max-width: 740px;
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.df-page-title {
+  font-size: 40px;
+  font-weight: 900;
+  color: #222;
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.df-title-icon {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+}
+
+.df-title-divider {
+  border: none;
+  border-top: 1.5px solid #d0cdc6;
+  margin: 0;
+}
+
+/* ── FORM CARD ── */
+.df-form-card {
+  background: linear-gradient(145deg, #f4b942, #e8a830);
+  border-radius: 24px;
+  padding: 32px 36px;
+  width: 100%;
+  max-width: 740px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 8px 32px rgba(244, 185, 66, 0.35);
+}
+
+/* ── TOP ROW: left form + right QR ── */
+.df-top-row {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.df-left-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* ── QR COLUMN ── */
+.df-qr-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.df-qr-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: white;
+  margin: 0;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.df-qr-box {
+  width: 110px;
+  height: 110px;
+  background: white;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+  position: relative;
+}
+
+.df-qr-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 6px;
+  box-sizing: border-box;
+}
+
+.df-qr-placeholder {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+}
+
+.df-qr-placeholder-icon {
+  font-size: 52px;
+  color: #ccc;
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 48;
+}
+
+.df-qr-placeholder-text {
+  font-size: 10px;
+  color: #bbb;
+  font-weight: 600;
+}
+
+/* ── QR CLICKABLE ── */
+.df-qr-box-clickable {
+  cursor: zoom-in;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.df-qr-box-clickable:hover {
+  transform: scale(1.06);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+}
+
+.df-qr-zoom-hint {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  background: rgba(0,0,0,0.45);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.df-qr-box-clickable:hover .df-qr-zoom-hint {
+  opacity: 1;
+}
+
+.df-qr-zoom-hint .material-symbols-rounded {
+  font-size: 14px;
+  color: white;
+}
+
+/* ── QR ZOOM MODAL ── */
+.df-qr-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: df-fade-in 0.2s ease;
+  cursor: pointer;
+}
+
+@keyframes df-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.df-qr-modal {
+  background: white;
+  border-radius: 24px;
+  padding: 32px 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  cursor: default;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+  animation: df-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.df-qr-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #aaa;
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+  padding: 2px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.df-qr-modal-close:hover {
+  color: #c0392b;
+  background: #fdecea;
+}
+
+.df-qr-modal-close .material-symbols-rounded {
+  font-size: 22px;
+}
+
+.df-qr-modal-label {
+  font-size: 18px;
+  font-weight: 800;
+  color: #222;
+  margin: 0;
+}
+
+.df-qr-modal-img {
+  width: 260px;
+  height: 260px;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid #eee;
+}
+
+.df-qr-modal-hint {
+  font-size: 12px;
+  color: #aaa;
+  margin: 0;
+}
+
+/* ── UPLOAD ZONE ── */
+.df-upload-zone {
+  background: white;
+  border: 2px dashed rgba(255,255,255,0.6);
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+}
+
+.df-upload-zone:hover {
+  border-color: #2e7d32;
+  background: #f0faf0;
+}
+
+.df-upload-zone-filled {
+  cursor: default;
+  border-style: solid;
+  border-color: #2e7d32;
+}
+
+.df-upload-error {
+  border-color: #e74c3c !important;
+}
+
+.df-file-input {
+  display: none;
+}
+
+/* Upload placeholder */
+.df-upload-placeholder {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.df-upload-icon {
+  font-size: 22px;
+  color: #aaa;
+}
+
+.df-upload-text {
+  font-size: 13px;
+  color: #bbb;
+  flex: 1;
+}
+
+.df-upload-hint {
+  font-size: 11px;
+  color: #ccc;
+  margin-left: auto;
+}
+
+/* Upload preview */
+.df-upload-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.df-receipt-thumb {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.df-upload-preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.df-upload-filename {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.df-extracting-text {
+  font-size: 11px;
+  color: #2e7d32;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.df-extracting-spin {
+  font-size: 14px;
+  animation: df-spin 1s linear infinite;
+}
+
+@keyframes df-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.df-upload-remove {
+  background: none;
+  border: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: #c0392b;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  text-decoration: underline;
+  align-self: flex-start;
+  transition: color 0.2s;
+}
+
+.df-upload-remove:hover {
+  color: #922b21;
+}
+
+/* ── INLINE ROW (receipt number + e-wallet) ── */
+.df-inline-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* ── ROWS ── */
+.df-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+/* ── FIELDS ── */
+.df-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.df-field-grow  { flex: 2; }
+.df-field-method { flex: 0 0 140px; }
+.df-field-amount { flex: 2; }
+
+/* ── LABEL ── */
+.df-label {
+  font-size: 14px;
+  font-weight: 800;
+  color: white;
+  letter-spacing: 0.2px;
+}
+
+.df-optional {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+  font-style: italic;
+}
+
+/* ── INPUT BASE ── */
+.df-input {
+  background: white;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #333;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.df-input:focus {
+  border-color: #2e7d32;
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.15);
+}
+
+.df-input::placeholder {
+  color: #bbb;
+}
+
+.df-input-center {
+  text-align: center;
+}
+
+.df-select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23999' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+
+/* ── AMOUNT ── */
+.df-amount-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.df-peso-sign {
+  position: absolute;
+  left: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #555;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.df-amount-input {
+  padding-left: 28px !important;
+}
+
+/* ── TEXTAREA ── */
+.df-textarea {
+  resize: vertical;
+  min-height: 90px;
+  text-align: left;
+}
+
+/* ── ERROR STATE ── */
+.df-input-error {
+  border-color: #e74c3c !important;
+  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.15) !important;
+}
+
+.df-error {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff0ee;
+  background: rgba(231, 76, 60, 0.55);
+  border-radius: 6px;
+  padding: 3px 8px;
+  margin: 0;
+}
+
+/* ── SUBMIT ROW ── */
+.df-submit-row {
+  width: 100%;
+  max-width: 740px;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.df-submit-btn {
+  background: #2e7d32;
+  color: white;
+  font-size: 16px;
+  font-weight: 800;
+  font-family: inherit;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 48px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 16px rgba(46, 125, 50, 0.3);
+  letter-spacing: 0.5px;
+}
+
+.df-submit-btn:hover:not(:disabled) {
+  background: #1b5e20;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(46, 125, 50, 0.4);
+}
+
+.df-submit-btn:disabled {
+  background: #aaa;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── SUCCESS SCREEN ── */
+.df-success-screen {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+.df-success-card {
+  background: white;
+  border-radius: 24px;
+  padding: 50px 60px;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.1);
+  max-width: 460px;
+  width: 100%;
+  animation: df-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes df-pop {
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.df-success-icon {
+  font-size: 72px;
+  color: #2e7d32;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.df-success-title {
+  font-size: 26px;
+  font-weight: 900;
+  color: #2e7d32;
+  margin: 0 0 10px;
+}
+
+.df-success-sub {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 28px;
+  line-height: 1.6;
+}
+
+.df-success-btns {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.df-success-btn-home {
+  background: #f4b942;
+  color: #222;
+  font-weight: 700;
+  font-size: 14px;
+  font-family: inherit;
+  border: none;
+  border-radius: 30px;
+  padding: 12px 28px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.df-success-btn-home:hover {
+  background: #e0a830;
+  transform: scale(1.03);
+}
+
+.df-success-btn-dash {
+  background: #2e7d32;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  font-family: inherit;
+  border: none;
+  border-radius: 30px;
+  padding: 12px 28px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.df-success-btn-dash:hover {
+  background: #1b5e20;
+  transform: scale(1.03);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .df-page {
+    padding: 28px 20px 40px;
+  }
+
+  .df-form-card {
+    padding: 24px 20px;
+  }
+
+  .df-top-row {
+    flex-direction: column-reverse;
+    align-items: center;
+  }
+
+  .df-left-col {
+    width: 100%;
+  }
+
+  .df-qr-col {
+    width: 100%;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .df-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .df-inline-row {
+    flex-direction: column;
+  }
+
+  .df-field-method {
+    flex: 1;
+    width: 100%;
+  }
+
+  .df-page-title {
+    font-size: 28px;
+  }
+
+  .df-submit-row {
+    justify-content: center;
+  }
+
+  .df-success-card {
+    padding: 36px 24px;
+  }
+}
+
+
 
 
 
