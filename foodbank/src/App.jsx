@@ -7,6 +7,8 @@ import Contact from "./pages/Contact";
 
 import Media from "./pages/Media";
 import Login from "./pages/Login";
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from "./pages/ResetPassword";
 import Register from "./pages/Register";
 import RegisterDonor from "./pages/RegisterDonor";
 import RegisterOrg from "./pages/RegisterOrg";
@@ -33,6 +35,8 @@ function App() {
 
         <Route path="/media" element={<Media />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password"  element={<ResetPassword />} />
         <Route path="/register" element={<Register />} />
         <Route path="/register/donor" element={<RegisterDonor />} />
         <Route path="/register/org" element={<RegisterOrg />} />

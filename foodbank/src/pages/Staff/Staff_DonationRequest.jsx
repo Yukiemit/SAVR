@@ -2,167 +2,120 @@ import { useState, useEffect } from "react";
 import NavBar_Staff from "../../components/NavBar_Staff";
 import api from "../../services/api";
 
-// ── DUMMY DATA (remove once backend is connected) ─────────────────────────────
-const DUMMY_REQUESTS = [
-    {
-        id: 1,
-        name: "Mira K.",
-        email: "mirak@gmail.com",
-        contact: "09022323246",
-        address: "313 B. Mabini St. Caloocan City",
-        urgency: "urgent",
-        pax: 5,
-        reason: "Post-surgery recovery, need help with medication & physio. any amount lifts us.",
-        status: "pending",
-    },
-    {
-        id: 2,
-        name: "Jose R.",
-        email: "joser@gmail.com",
-        contact: "09171234567",
-        address: "22 Rizal Ave. Manila",
-        urgency: "normal",
-        pax: 3,
-        reason: "Single parent of 3, recently lost job, need food assistance for the week.",
-        status: "allocated",
-    },
-    {
-        id: 3,
-        name: "Ana T.",
-        email: "anat@gmail.com",
-        contact: "09281112233",
-        address: "55 Burgos St. Quezon City",
-        urgency: "urgent",
-        pax: 8,
-        reason: "Flood victims in our community, urgent need for relief goods and food packs.",
-        status: "pending",
-    },
-    {
-        id: 4,
-        name: "Ben L.",
-        email: "benl@gmail.com",
-        contact: "09093334455",
-        address: "10 Maharlika St. Pasig City",
-        urgency: "normal",
-        pax: 2,
-        reason: "Elderly couple with no immediate family support, need weekly food supply.",
-        status: "pending",
-    },
-    {
-        id: 5,
-        name: "Luz M.",
-        email: "luzm@gmail.com",
-        contact: "09156667788",
-        address: "88 Del Monte Ave. Quezon City",
-        urgency: "urgent",
-        pax: 10,
-        reason: "Community kitchen serving street children, running low on supplies.",
-        status: "allocated",
-    },
-    {
-        id: 6,
-        name: "Rico P.",
-        email: "ricop@gmail.com",
-        contact: "09209998877",
-        address: "4 Tandang Sora, Quezon City",
-        urgency: "normal",
-        pax: 4,
-        reason: "Family displaced after fire, currently in evacuation center.",
-        status: "pending",
-    },
-];
-
-// ── URGENCY CONFIG ────────────────────────────────────────────────────────────
 const URGENCY_LABEL = {
-    urgent:   { label: "Urgent",   color: "#e74c3c", bg: "#fdecea" },
-    high:     { label: "High",     color: "#e67e22", bg: "#fef3e2" },
-    medium:   { label: "Medium",   color: "#f4b942", bg: "#fefae3" },
-    normal:   { label: "Normal",   color: "#aaa",    bg: "#f0f0f0" },
-    low:      { label: "Low",      color: "#aaa",    bg: "#f0f0f0" },
-    critical: { label: "Critical", color: "#c0392b", bg: "#fdecea" },
+    low:      { label: "Low",      color: "#27ae60", bg: "#eafaf1" },
+    medium:   { label: "Medium",   color: "#e67e22", bg: "#fef3e2" },
+    high:     { label: "High",     color: "#e74c3c", bg: "#fdecea" },
+    critical: { label: "Critical", color: "#922b21", bg: "#fadbd8" },
 };
 
 const STATUS_LABEL = {
-    pending:   { label: "Pending",   color: "#e67e22", bg: "#fef3e2" },
-    allocated: { label: "Allocated", color: "#2e7d32", bg: "#e8f5e9" },
+    Pending:   { label: "Pending",   color: "#e67e22", bg: "#fef3e2" },
+    Allocated: { label: "Allocated", color: "#2e7d32", bg: "#e8f5e9" },
+    Declined:  { label: "Declined",  color: "#c62828", bg: "#ffebee" },
+    Done:      { label: "Done",      color: "#1565c0", bg: "#e3f2fd" },
 };
 
 export default function Staff_DonationRequest() {
 
-    // ── State ─────────────────────────────────────────────────────────────────
     const [requests, setRequests]           = useState([]);
+    const [stats, setStats]                 = useState({ pending: 0, allocated: 0 });
     const [filter, setFilter]               = useState("all");
     const [search, setSearch]               = useState("");
     const [loading, setLoading]             = useState(true);
     const [actionLoading, setActionLoading] = useState(null);
 
-    // ── Fetch requests ─────────────────────────────────────────────────────────
-    useEffect(() => {
-        const fetchRequests = async () => {
-            try {
-                // ── BACKEND READY: uncomment below and remove setRequests(DUMMY_REQUESTS) ──
-                // const res = await api.get("/staff/donation-requests");
-                // setRequests(res.data);
+    const [showModal, setShowModal]   = useState(false);
+    const [selected, setSelected]     = useState(null);
+    const [driveForm, setDriveForm]   = useState({
+        drive_title: "", type: "Food", goal: "", start_date: "", end_date: "",
+    });
+    const [modalError, setModalError] = useState("");
+    const [saving, setSaving]         = useState(false);
 
-                // ── DUMMY DATA (remove when backend is connected) ──
-                setRequests(DUMMY_REQUESTS);
-            } catch (err) {
-                console.error("Fetch error:", err);
-                setRequests(DUMMY_REQUESTS);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchRequests();
-    }, []);
+    // ── Fetch all once ────────────────────────────────────────────────────────
+    const fetchAll = async () => {
+        setLoading(true);
+        try {
+            const [reqRes, statsRes] = await Promise.all([
+                api.get("/staff/donation-requests"),
+                api.get("/staff/donation-requests/stats"),
+            ]);
+            setRequests(reqRes.data);
+            setStats(statsRes.data);
+        } catch (err) {
+            console.error("Fetch error:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    const pendingCount   = requests.filter(r => r.status === "pending").length;
-    const allocatedCount = requests.filter(r => r.status === "allocated").length;
+    useEffect(() => { fetchAll(); }, []); // ✅ fetch once only
 
+    // ── Client-side filter + search ───────────────────────────────────────────
     const visible = requests.filter((r) => {
+        const urgencyLower = r.urgency?.toLowerCase();
+
         const matchFilter =
-        filter === "all"         ? true :
-        filter === "urgent"      ? (r.urgency === "urgent" || r.urgency === "critical") :
-        filter === "unallocated" ? r.status === "pending" :
-        filter === "allocated"   ? r.status === "allocated" :
-        true;
+            filter === "all"         ? true :
+            filter === "urgent"      ? ["high", "critical"].includes(urgencyLower) :
+            filter === "unallocated" ? r.status === "Pending" :
+            filter === "allocated"   ? r.status === "Allocated" :
+            true;
 
         const q = search.toLowerCase();
         const matchSearch =
-        !q ||
-        r.name.toLowerCase().includes(q) ||
-        r.email.toLowerCase().includes(q) ||
-        r.address.toLowerCase().includes(q) ||
-        r.reason.toLowerCase().includes(q);
+            !q ||
+            r.name?.toLowerCase().includes(q)    ||
+            r.email?.toLowerCase().includes(q)   ||
+            r.address?.toLowerCase().includes(q) ||
+            r.reason?.toLowerCase().includes(q);
 
         return matchFilter && matchSearch;
     });
 
-    // ── ALLOCATE / UNALLOCATE  ───────────────────────────────────────────
-    const handleAllocate = async (id) => {
-        const current = requests.find(r => r.id === id);
-        const newStatus = current.status === "allocated" ? "pending" : "allocated";
+    const openAllocate = (req) => {
+        setSelected(req);
+        setDriveForm({ drive_title: "", type: "Food", goal: "", start_date: "", end_date: "" });
+        setModalError("");
+        setShowModal(true);
+    };
+
+    const handleAllocate = async () => {
+        if (!driveForm.drive_title || !driveForm.goal || !driveForm.start_date || !driveForm.end_date) {
+            setModalError("Please fill in all required fields.");
+            return;
+        }
+        setSaving(true);
+        try {
+            await api.post(`/staff/donation-requests/${selected.id}/allocate`, driveForm);
+            setShowModal(false);
+            fetchAll();
+        } catch (err) {
+            setModalError(err.response?.data?.message || "Failed to allocate.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleUnallocate = async (id) => {
         setActionLoading(id);
         try {
-            // ── BACKEND READY: uncomment below ──
-            // await api.patch(`/staff/donation-requests/${id}/allocate`, { status: newStatus });
-            setRequests(prev =>
-                prev.map(r => r.id === id ? { ...r, status: newStatus } : r)
-            );
+            await api.post(`/staff/donation-requests/${id}/unallocate`);
+            fetchAll();
         } catch (err) {
-            console.error("Allocate toggle error:", err);
+            console.error("Unallocate error:", err);
         } finally {
             setActionLoading(null);
         }
     };
 
-    // ── DECLINE ────────────────────────────────────────────
     const handleDecline = async (id) => {
+        if (!confirm("Decline this request?")) return;
         setActionLoading(id);
         try {
-            // ── BACKEND READY: uncomment below ──
-            // await api.patch(`/staff/donation-requests/${id}/decline`);
-            setRequests(prev => prev.filter(r => r.id !== id));
+            await api.post(`/staff/donation-requests/${id}/decline`);
+            fetchAll();
         } catch (err) {
             console.error("Decline error:", err);
         } finally {
@@ -170,14 +123,11 @@ export default function Staff_DonationRequest() {
         }
     };
 
-    // ── DONE — sends email to requester, removes from list ────────────────────
     const handleDone = async (id) => {
         setActionLoading(id);
         try {
-            // ── BACKEND READY: uncomment below ──
-            // await api.patch(`/staff/donation-requests/${id}/done`);
-            // Backend should send email notification to r.email
-            setRequests(prev => prev.filter(r => r.id !== id));
+            await api.post(`/staff/donation-requests/${id}/done`);
+            fetchAll();
         } catch (err) {
             console.error("Done error:", err);
         } finally {
@@ -185,134 +135,161 @@ export default function Staff_DonationRequest() {
         }
     };
 
+    const labelStyle = { display: "block", fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 4, marginTop: 12 };
+    const inputStyle = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #ccc", fontSize: 14, boxSizing: "border-box" };
+
     return (
         <div className="dr-wrapper">
-
-            {/* ── NAVBAR ── */}
             <NavBar_Staff />
-
             <main className="dr-main">
 
-                {/* ── PAGE HEADER ── */}
+                {/* PAGE HEADER */}
                 <div className="dr-header">
                     <h1 className="dr-heading">Donation Request</h1>
-                    {/* PENDING + ALLOCATED COUNTERS */}
                     <div className="dr-counters">
                         <div className="dr-counter dr-counter-pending">
                             <span className="material-symbols-rounded dr-counter-icon">schedule</span>
-                            <span className="dr-counter-num">{pendingCount}</span>
+                            <span className="dr-counter-num">{stats.pending}</span>
                             <span className="dr-counter-label">Pending</span>
                         </div>
                         <div className="dr-counter dr-counter-allocated">
                             <span className="material-symbols-rounded dr-counter-icon">check_circle</span>
-                            <span className="dr-counter-num">{allocatedCount}</span>
+                            <span className="dr-counter-num">{stats.allocated}</span>
                             <span className="dr-counter-label">Allocated</span>
                         </div>
                     </div>
                 </div>
 
-                {/* ── FILTER + SEARCH BAR ── */}
+                {/* FILTER + SEARCH */}
                 <div className="dr-toolbar">
                     <div className="dr-filters">
                         {["all", "urgent", "unallocated", "allocated"].map((f) => (
-                        <button
-                            key={f}
-                            className={`dr-filter-tab ${filter === f ? "dr-filter-active" : ""}`}
-                            onClick={() => setFilter(f)}
-                        >
-                            {f.charAt(0).toUpperCase() + f.slice(1)}
-                        </button>
+                            <button
+                                key={f}
+                                className={`dr-filter-tab ${filter === f ? "dr-filter-active" : ""}`}
+                                onClick={() => setFilter(f)}
+                            >
+                                {f.charAt(0).toUpperCase() + f.slice(1)}
+                            </button>
                         ))}
                     </div>
                     <div className="dr-search-wrap">
                         <input
-                        className="dr-search"
-                        type="text"
-                        placeholder="Search"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                            className="dr-search"
+                            type="text"
+                            placeholder="Search"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
                         />
                         <span className="material-symbols-rounded dr-search-icon">search</span>
                     </div>
                 </div>
 
-                {/* ── REQUEST CARDS GRID ── */}
+                {/* CARDS GRID */}
                 {loading ? (
                     <p className="dr-empty">Loading requests…</p>
                 ) : visible.length === 0 ? (
                     <p className="dr-empty">No requests found.</p>
                 ) : (
-                <div className="dr-grid">
-                    {visible.map((r) => {
-                    const urgency = URGENCY_LABEL[r.urgency] ?? URGENCY_LABEL.normal;
-                    const status  = STATUS_LABEL[r.status]   ?? STATUS_LABEL.pending;
-                    const busy    = actionLoading === r.id;
+                    <div className="dr-grid">
+                        {visible.map((r) => {
+                            const urgency = URGENCY_LABEL[r.urgency?.toLowerCase()] ?? URGENCY_LABEL.medium;
+                            const status  = STATUS_LABEL[r.status] ?? STATUS_LABEL.Pending;
+                            const busy    = actionLoading === r.id;
 
-                    return (
-                        <div className="dr-card" key={r.id}>
-
-                            {/* CARD HEADER */}
-                            <div className="dr-card-header">
-                                <span className="dr-card-name">{r.name}</span>
-                                <span
-                                    className="dr-card-badge"
-                                    style={{ color: urgency.color, background: urgency.bg }}
-                                >
-                                {urgency.label}
-                                </span>
-                            </div>
-                            {/* CONTACT ROW */}
-                            <div className="dr-card-contact">
-                                <span>{r.email}</span>
-                                <span>{r.contact}</span>
-                            </div>
-                            {/* ADDRESS */}
-                            <p className="dr-card-address">{r.address}</p>
-                            {/* REASON BOX */}
-                            <div className="dr-card-reason">
-                                <p>"{r.reason}"</p>
-                            </div>
-                            {/* STATUS TAG + PAX */}
-                            <div className="dr-card-status-row">
-                                <span
-                                className="dr-card-status"
-                                style={{ color: status.color, background: status.bg }}
-                                >
-                                {status.label}
-                                </span>
-                                <span className="dr-card-pax">{r.pax} pax</span>
-                            </div>
-
-                            {/* ACTION BUTTONS */}
-                            <div className="dr-card-actions">
-                                <button
-                                    className={`dr-btn ${r.status === "allocated" ? "dr-btn-unallocate" : "dr-btn-allocate"}`}
-                                    onClick={() => handleAllocate(r.id)}
-                                    disabled={busy}
-                                >
-                                    {r.status === "allocated" ? "Unallocate" : "Allocate"}
-                                </button>
-                                <button
-                                    className="dr-btn dr-btn-decline"
-                                    onClick={() => handleDecline(r.id)}
-                                    disabled={busy}
-                                >
-                                    Decline
-                                </button>
-                                <button
-                                    className="dr-btn dr-btn-done"
-                                    onClick={() => handleDone(r.id)}
-                                    disabled={busy}
-                                >
-                                    Done
-                                </button>
-                            </div>
-                        </div>
-                        );
-                    })}
-                </div>
+                            return (
+                                <div className="dr-card" key={r.id}>
+                                    <div className="dr-card-header">
+                                        <span className="dr-card-name">{r.name}</span>
+                                        <span className="dr-card-badge" style={{ color: urgency.color, background: urgency.bg }}>
+                                            {urgency.label}
+                                        </span>
+                                    </div>
+                                    <div className="dr-card-contact">
+                                        <span>{r.email}</span>
+                                        <span>{r.contact}</span>
+                                    </div>
+                                    <p className="dr-card-address">{r.address}</p>
+                                    <div className="dr-card-reason">
+                                        <p>"{r.reason}"</p>
+                                    </div>
+                                    <div className="dr-card-status-row">
+                                        <span className="dr-card-status" style={{ color: status.color, background: status.bg }}>
+                                            {status.label}
+                                        </span>
+                                        <span className="dr-card-pax">{r.pax} pax</span>
+                                    </div>
+                                    <div className="dr-card-actions">
+                                        {r.status === "Allocated" ? (
+                                            <button className="dr-btn dr-btn-unallocate" onClick={() => handleUnallocate(r.id)} disabled={busy}>
+                                                Unallocate
+                                            </button>
+                                        ) : (
+                                            <button className="dr-btn dr-btn-allocate" onClick={() => openAllocate(r)} disabled={busy || r.status === "Declined" || r.status === "Done"}>
+                                                Allocate
+                                            </button>
+                                        )}
+                                        <button className="dr-btn dr-btn-decline" onClick={() => handleDecline(r.id)} disabled={busy || r.status === "Declined" || r.status === "Done"}>Decline</button>
+                                        <button className="dr-btn dr-btn-done"    onClick={() => handleDone(r.id)}    disabled={busy || r.status === "Done"}>Done</button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 )}
             </main>
+
+            {/* ALLOCATE MODAL */}
+            {showModal && selected && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }}>
+                    <div style={{ background: "#fff", borderRadius: 16, padding: 32, width: 480, boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
+                        <h2 style={{ marginBottom: 4 }}>Allocate Request</h2>
+                        <p style={{ color: "#888", fontSize: 13, marginBottom: 20 }}>
+                            Creating a donation drive for <strong>{selected.name}</strong>
+                        </p>
+                        <div style={{ background: "#f5f5f0", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#555", marginBottom: 20 }}>
+                            <p><strong>Contact Person:</strong> {selected.name}</p>
+                            <p><strong>Address:</strong> {selected.address}</p>
+                            <p><strong>Contact:</strong> {selected.contact}</p>
+                            <p><strong>Email:</strong> {selected.email}</p>
+                        </div>
+
+                        <label style={labelStyle}>Drive Title *</label>
+                        <input value={driveForm.drive_title} onChange={(e) => setDriveForm({ ...driveForm, drive_title: e.target.value })} placeholder="e.g. Poblacion Drive" style={inputStyle} />
+
+                        <label style={labelStyle}>Type *</label>
+                        <select value={driveForm.type} onChange={(e) => setDriveForm({ ...driveForm, type: e.target.value })} style={inputStyle}>
+                            <option value="Food">Food</option>
+                            <option value="Financial">Financial</option>
+                        </select>
+
+                        <label style={labelStyle}>Goal *</label>
+                        <input value={driveForm.goal} onChange={(e) => setDriveForm({ ...driveForm, goal: e.target.value })} placeholder="e.g. 500 Meals or ₱100,000" style={inputStyle} />
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                            <div>
+                                <label style={labelStyle}>Start Date *</label>
+                                <input type="date" value={driveForm.start_date} onChange={(e) => setDriveForm({ ...driveForm, start_date: e.target.value })} style={inputStyle} />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>End Date *</label>
+                                <input type="date" value={driveForm.end_date} onChange={(e) => setDriveForm({ ...driveForm, end_date: e.target.value })} style={inputStyle} />
+                            </div>
+                        </div>
+
+                        {modalError && <p style={{ color: "red", fontSize: 13, marginTop: 8 }}>⚠️ {modalError}</p>}
+
+                        <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                            <button onClick={() => setShowModal(false)} style={{ flex: 1, padding: "10px", borderRadius: 999, background: "#fff", color: "#333", border: "1px solid #ccc", fontWeight: 600, cursor: "pointer" }}>
+                                Cancel
+                            </button>
+                            <button onClick={handleAllocate} disabled={saving} style={{ flex: 2, padding: "10px", borderRadius: 999, background: "#2e7d32", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}>
+                                {saving ? "Allocating..." : "Confirm Allocate"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

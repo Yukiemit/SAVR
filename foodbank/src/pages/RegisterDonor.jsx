@@ -1,7 +1,10 @@
 import { useState } from "react";
 import api from "../services/api";
+import OtpVerification from "../components/OtpVerification";
 
 export default function RegisterDonor() {
+  const [step, setStep] = useState("register")
+  const [userId, setUserId] = useState(null);
   const [form, setForm] = useState({
     first_name: "",
     middle_name: "",
@@ -108,13 +111,14 @@ export default function RegisterDonor() {
     setErrors({});
 
     try {
-      await api.post("/register", {
+      const res = await api.post("/register", {
         ...form,
         name: form.first_name + " " + form.last_name,
         role: "donor",
       });
 
-      alert("Registered Successfully!");
+      setUserId(res.data.user_id);  // ← SAVE user_id
+      setStep("verify");
 
       // ✅ RESET FORM AFTER SUCCESS
       setForm({
@@ -141,7 +145,6 @@ export default function RegisterDonor() {
       const statusCode = err.response?.status;
 
       if (laravelErrors) {
-        // ✅ MAP LARAVEL VALIDATION ERRORS TO FIELDS
         const mapped = {};
         for (const field in laravelErrors) {
           mapped[field] = laravelErrors[field][0];
@@ -158,6 +161,38 @@ export default function RegisterDonor() {
       setLoading(false);
     }
   };
+
+  // ── STEP: OTP VERIFICATION ──
+  if (step === "verify") {
+    return (
+      <OtpVerification
+        userId={userId}
+        onSuccess={() => setStep("done")}
+      />
+    );
+  }
+
+  // ── STEP: SUCCESS ──
+  if (step === "done") {
+    return (
+      <div className="bg-foodbank">
+        <div className="form-card fade-in text-center">
+          <img
+            src="/images/logobrown.png"
+            alt="FoodBank Logo"
+            className="w-48 mx-auto mb-4"
+          />
+          <h2 className="form-title">🎉 Account Verified!</h2>
+          <p className="form-subtitle">
+            Your email has been verified. You can now log in.
+          </p>
+          <a href="/login" className="btn-register mt-4 inline-block">
+            Go to Login
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   // ✅ COLLECT ALL ACTIVE ERRORS INTO A LIST
   const errorList = Object.entries(errors)

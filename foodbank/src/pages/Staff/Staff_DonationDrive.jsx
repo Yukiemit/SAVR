@@ -2,492 +2,358 @@ import { useState, useEffect } from "react";
 import NavBar_Staff from "../../components/NavBar_Staff";
 import api from "../../services/api";
 
-// ── DUMMY DATA (remove once backend is connected) ─────────────────────────────
-const DUMMY_DRIVES = [
-  {
-    id: 1,
-    status: "pending",
-    title: "Poblacion Drive",
-    type: "financial",
-    goal: 100000,
-    goal_label: "₱ 100,000",
-    start_date: "2026-06-30",
-    end_date: "2026-07-13",
-    address: "132 Grand Caloocan, City",
-    contact_person: "Maria Vernice",
-    contact_number: "0923 432 3245",
-    contact_email: "mvernice@gmail.com",
-  },
-  {
-    id: 2,
-    status: "done",
-    title: "Fire Save Food",
-    type: "food",
-    goal: 500,
-    goal_label: "500 Meals",
-    start_date: "2026-06-30",
-    end_date: "2026-07-13",
-    address: "Makati Elementary High",
-    contact_person: "Ella Patricia",
-    contact_number: "0923 452 3557",
-    contact_email: "elapat@gmail.com",
-  },
-  {
-    id: 3,
-    status: "ongoing",
-    title: "Together We Thrive",
-    type: "food",
-    goal: 900,
-    goal_label: "900 Meals",
-    start_date: "2026-06-30",
-    end_date: "2026-07-13",
-    address: "SM Bicutan",
-    contact_person: "Antony Martizen",
-    contact_number: "0967 454 6582",
-    contact_email: "amart@gmail.com",
-  },
-  {
-    id: 4,
-    status: "cancelled",
-    title: "Awit Foundation",
-    type: "financial",
-    goal: 100000,
-    goal_label: "₱ 100,000",
-    start_date: "2026-06-30",
-    end_date: "2026-07-13",
-    address: "342 Novaliches City",
-    contact_person: "Harry Mercado",
-    contact_number: "0935 456 3467",
-    contact_email: "hm@gmail.com",
-  },
-];
-
-// ── STATUS CONFIG ─────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
-  pending:   { label: "Pending",   color: "#555",    bg: "#f0f0f0",  border: "#ccc"    },
-  ongoing:   { label: "OnGoing",   color: "#f4b942", bg: "#fef3e2",  border: "#f4b942" },
-  done:      { label: "Done",      color: "#2e7d32", bg: "#e8f5e9",  border: "#2e7d32" },
-  cancelled: { label: "Cancelled", color: "#e74c3c", bg: "#fdecea",  border: "#e74c3c" },
+    Pending:   { label: "Pending",   color: "#555",    bg: "#f0f0f0",  border: "#ccc"    },
+    OnGoing:   { label: "OnGoing",   color: "#f4b942", bg: "#fef3e2",  border: "#f4b942" },
+    Done:      { label: "Done",      color: "#2e7d32", bg: "#e8f5e9",  border: "#2e7d32" },
+    Cancelled: { label: "Cancelled", color: "#e74c3c", bg: "#fdecea",  border: "#e74c3c" },
 };
 
-// ── TYPE CONFIG ───────────────────────────────────────────────────────────────
 const TYPE_CONFIG = {
-  financial: { label: "Financial", color: "#888",    bg: "#ececec" },
-  food:      { label: "Food",      color: "#6d4c41", bg: "#efebe9" },
-  service:   { label: "Service",   color: "#1565c0", bg: "#e3f2fd" },
+    Financial: { label: "Financial", color: "#888",    bg: "#ececec" },
+    Food:      { label: "Food",      color: "#6d4c41", bg: "#efebe9" },
 };
 
-// ── EMPTY ROW TEMPLATE ────────────────────────────────────────────────────────
-const EMPTY_ROW = {
-  id: null,
-  status: "pending",
-  title: "",
-  type: "financial",
-  goal_label: "",
-  start_date: "",
-  end_date: "",
-  address: "",
-  contact_person: "",
-  contact_number: "",
-  contact_email: "",
-  isNew: true,
+const EMPTY_FORM = {
+    drive_title: "", type: "Food", goal: "", start_date: "", end_date: "",
+    address: "", contact_person: "", contact: "", email: "", status: "Pending",
 };
 
 export default function Staff_DonationDrive() {
 
-  // ── State ─────────────────────────────────────────────────────────────────
-  const [drives, setDrives]               = useState([]);
-  const [filter, setFilter]               = useState("all");
-  const [search, setSearch]               = useState("");
-  const [loading, setLoading]             = useState(true);
-  const [savingId, setSavingId]           = useState(null);
-  const [editingRow, setEditingRow]       = useState(null); // id of row being edited
+    const [drives, setDrives]         = useState([]);
+    const [stats, setStats]           = useState({ pending: 0, ongoing: 0 });
+    const [filter, setFilter]         = useState("all");
+    const [search, setSearch]         = useState("");
+    const [loading, setLoading]       = useState(true);
 
-  // ── Fetch drives ───────────────────────────────────────────────────────────
-  useEffect(() => {
-    const fetchDrives = async () => {
-      try {
-        // ── BACKEND READY: uncomment below and remove setDrives(DUMMY_DRIVES) ──
-        // const res = await api.get("/staff/donation-drives");
-        // setDrives(res.data);
+    const [showModal, setShowModal]   = useState(false);
+    const [editTarget, setEditTarget] = useState(null);
+    const [form, setForm]             = useState(EMPTY_FORM);
+    const [modalError, setModalError] = useState("");
+    const [saving, setSaving]         = useState(false);
 
-        // ── DUMMY DATA ──
-        setDrives(DUMMY_DRIVES);
-      } catch (err) {
-        console.error("Fetch error:", err);
-        setDrives(DUMMY_DRIVES);
-      } finally {
-        setLoading(false);
-      }
+    // ── Fetch all once, filter client-side ────────────────────────────────────
+    const fetchAll = async () => {
+        setLoading(true);
+        try {
+            const [drivesRes, statsRes] = await Promise.all([
+                api.get("/staff/donation-drives"),  // ✅ no params
+                api.get("/staff/donation-drives/stats"),
+            ]);
+            setDrives(drivesRes.data);
+            setStats(statsRes.data);
+        } catch (err) {
+            console.error("Fetch error:", err);
+        } finally {
+            setLoading(false);
+        }
     };
-    fetchDrives();
-  }, []);
 
-  // ── Derived counts ─────────────────────────────────────────────────────────
-  const pendingCount = drives.filter(d => d.status === "pending" && !d.isNew).length;
-  const ongoingCount = drives.filter(d => d.status === "ongoing" && !d.isNew).length;
+    useEffect(() => { fetchAll(); }, []); // ✅ fetch once only
 
-  // ── Filtered + searched list ───────────────────────────────────────────────
-  const visible = drives.filter((d) => {
-    const matchFilter = filter === "all" ? true : d.status === filter || d.isNew;
-    const q = search.toLowerCase();
-    const matchSearch =
-      !q ||
-      d.title?.toLowerCase().includes(q) ||
-      d.address?.toLowerCase().includes(q) ||
-      d.contact_person?.toLowerCase().includes(q) ||
-      d.contact_email?.toLowerCase().includes(q);
-    return matchFilter && matchSearch;
-  });
+    // ── Client-side filter + search ───────────────────────────────────────────
+    const visible = drives.filter((d) => {
+        const matchFilter =
+            filter === "all" ? true :
+            d.status === filter;
 
-  // ── Add new empty row ──────────────────────────────────────────────────────
-  const handleAddRow = () => {
-    const tempId = `new-${Date.now()}`;
-    const newRow = { ...EMPTY_ROW, id: tempId };
-    setDrives(prev => [newRow, ...prev]);
-    setEditingRow(tempId);
-  };
+        const q = search.toLowerCase();
+        const matchSearch =
+            !q ||
+            d.drive_title?.toLowerCase().includes(q)    ||
+            d.address?.toLowerCase().includes(q)        ||
+            d.contact_person?.toLowerCase().includes(q) ||
+            d.email?.toLowerCase().includes(q);
 
-  // ── Update a field in a row ────────────────────────────────────────────────
-  const handleFieldChange = (id, field, value) => {
-    setDrives(prev =>
-      prev.map(d => d.id === id ? { ...d, [field]: value } : d)
+        return matchFilter && matchSearch;
+    });
+
+    // ── Open Add modal ────────────────────────────────────────────────────────
+    const openAdd = () => {
+        setEditTarget(null);
+        setForm(EMPTY_FORM);
+        setModalError("");
+        setShowModal(true);
+    };
+
+    // ── Open Edit modal ───────────────────────────────────────────────────────
+    const openEdit = (drive) => {
+        setEditTarget(drive);
+        setForm({
+            drive_title:    drive.drive_title    || "",
+            type:           drive.type           || "Food",
+            goal:           drive.goal           || "",
+            start_date:     drive.start_date     || "",
+            end_date:       drive.end_date       || "",
+            address:        drive.address        || "",
+            contact_person: drive.contact_person || "",
+            contact:        drive.contact        || "",
+            email:          drive.email          || "",
+            status:         drive.status         || "Pending",
+        });
+        setModalError("");
+        setShowModal(true);
+    };
+
+    // ── Save (create or update) ───────────────────────────────────────────────
+    const handleSave = async () => {
+        if (!form.drive_title || !form.goal || !form.start_date || !form.end_date) {
+            setModalError("Please fill in all required fields.");
+            return;
+        }
+        setSaving(true);
+        try {
+            if (editTarget) {
+                await api.put(`/staff/donation-drives/${editTarget.id}`, form);
+            } else {
+                await api.post("/staff/donation-drives", form);
+            }
+            setShowModal(false);
+            fetchAll(); // ✅ refresh after save
+        } catch (err) {
+            setModalError(err.response?.data?.message || "Failed to save.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // ── Delete ────────────────────────────────────────────────────────────────
+    const handleDelete = async (id) => {
+        if (!confirm("Delete this donation drive?")) return;
+        try {
+            await api.delete(`/staff/donation-drives/${id}`);
+            fetchAll(); // ✅ refresh after delete
+        } catch (err) {
+            console.error("Delete error:", err);
+        }
+    };
+
+    // ── Status change inline ──────────────────────────────────────────────────
+    const handleStatusChange = async (id, newStatus) => {
+        try {
+            await api.put(`/staff/donation-drives/${id}`, { status: newStatus });
+            // ✅ update local state immediately so UI reflects change instantly
+            setDrives(prev => prev.map(d => d.id === id ? { ...d, status: newStatus } : d));
+            // ✅ refresh stats too
+            const statsRes = await api.get("/staff/donation-drives/stats");
+            setStats(statsRes.data);
+        } catch (err) {
+            console.error("Status change error:", err);
+        }
+    };
+
+    const labelStyle = { display: "block", fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 4, marginTop: 12 };
+    const inputStyle = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #ccc", fontSize: 14, boxSizing: "border-box" };
+
+    return (
+        <div className="dd-drive-wrapper">
+
+            <NavBar_Staff />
+
+            <main className="dd-drive-main">
+
+                {/* PAGE HEADER */}
+                <div className="dd-drive-header">
+                    <h1 className="dd-drive-heading">Donation Drive</h1>
+                    <div className="dr-counters">
+                        <div className="dr-counter dr-counter-pending">
+                            <span className="material-symbols-rounded dr-counter-icon">schedule</span>
+                            <span className="dr-counter-num">{stats.pending}</span>
+                            <span className="dr-counter-label">Pending</span>
+                        </div>
+                        <div className="dr-counter dr-counter-allocated">
+                            <span className="material-symbols-rounded dr-counter-icon">check_circle</span>
+                            <span className="dr-counter-num">{stats.ongoing}</span>
+                            <span className="dr-counter-label">OnGoing</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* TOOLBAR */}
+                <div className="dr-toolbar">
+                    <div className="dr-filters">
+                        {["all", "Pending", "OnGoing", "Cancelled", "Done"].map((f) => (
+                            <button
+                                key={f}
+                                className={`dr-filter-tab ${filter === f ? "dr-filter-active" : ""}`}
+                                onClick={() => setFilter(f)}
+                            >
+                                {f === "all" ? "All" : f}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="dd-drive-toolbar-right">
+                        <button className="dd-drive-add-btn" onClick={openAdd}>
+                            <span className="material-symbols-rounded">add</span>
+                            Add New Item
+                        </button>
+                        <div className="dr-search-wrap">
+                            <input
+                                className="dr-search"
+                                type="text"
+                                placeholder="Search"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                            <span className="material-symbols-rounded dr-search-icon">search</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* TABLE */}
+                <div className="dd-drive-table-wrap">
+                    <table className="dd-drive-table">
+                        <thead>
+                            <tr>
+                                <th>STATUS</th>
+                                <th>DRIVE TITLE</th>
+                                <th>TYPE</th>
+                                <th>GOAL</th>
+                                <th>DURATION DATE</th>
+                                <th>ADDRESS</th>
+                                <th>CONTACT PERSON</th>
+                                <th>NUMBER</th>
+                                <th>EMAIL</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr><td colSpan={10} className="dd-drive-empty">Loading…</td></tr>
+                            ) : visible.length === 0 ? (
+                                <tr><td colSpan={10} className="dd-drive-empty">No drives found.</td></tr>
+                            ) : (
+                                visible.map((d) => {
+                                    const statusCfg = STATUS_CONFIG[d.status] ?? STATUS_CONFIG.Pending;
+                                    const typeCfg   = TYPE_CONFIG[d.type]     ?? TYPE_CONFIG.Food;
+
+                                    return (
+                                        <tr key={d.id}>
+                                            {/* STATUS — inline dropdown */}
+                                            <td>
+                                                <select
+                                                    className="dd-drive-status-select"
+                                                    value={d.status}
+                                                    style={{ color: statusCfg.color, background: statusCfg.bg, borderColor: statusCfg.border }}
+                                                    onChange={(e) => handleStatusChange(d.id, e.target.value)}
+                                                >
+                                                    {Object.entries(STATUS_CONFIG).map(([k, v]) => (
+                                                        <option key={k} value={k}>{v.label}</option>
+                                                    ))}
+                                                </select>
+                                            </td>
+
+                                            <td><span className="dd-drive-title-text">{d.drive_title}</span></td>
+
+                                            <td>
+                                                <span className="dd-drive-type-badge" style={{ color: typeCfg.color, background: typeCfg.bg }}>
+                                                    {typeCfg.label}
+                                                </span>
+                                            </td>
+
+                                            <td>{d.goal}</td>
+
+                                            <td>
+                                                <span className="dd-drive-date-badge">
+                                                    {d.start_date} — {d.end_date}
+                                                </span>
+                                            </td>
+
+                                            <td>{d.address}</td>
+                                            <td>{d.contact_person}</td>
+                                            <td>{d.contact}</td>
+                                            <td><span className="dd-drive-email">{d.email}</span></td>
+
+                                            {/* EDIT / DELETE */}
+                                            <td className="dd-drive-actions-cell">
+                                                <div className="dd-drive-row-actions">
+                                                    <button className="dd-drive-save-btn"   onClick={() => openEdit(d)}>Edit</button>
+                                                    <button className="dd-drive-cancel-btn" onClick={() => handleDelete(d.id)}>Delete</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+            </main>
+
+            {/* ADD / EDIT MODAL */}
+            {showModal && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }}>
+                    <div style={{ background: "#fff", borderRadius: 16, padding: 32, width: 520, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
+                        <h2 style={{ marginBottom: 20 }}>{editTarget ? "Edit Donation Drive" : "Add New Donation Drive"}</h2>
+
+                        <label style={labelStyle}>Drive Title *</label>
+                        <input value={form.drive_title} onChange={(e) => setForm({ ...form, drive_title: e.target.value })} placeholder="Drive Title" style={inputStyle} />
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                            <div>
+                                <label style={labelStyle}>Type *</label>
+                                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} style={inputStyle}>
+                                    <option value="Food">Food</option>
+                                    <option value="Financial">Financial</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style={labelStyle}>Status</label>
+                                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} style={inputStyle}>
+                                    {Object.entries(STATUS_CONFIG).map(([k, v]) => (
+                                        <option key={k} value={k}>{v.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <label style={labelStyle}>Goal *</label>
+                        <input value={form.goal} onChange={(e) => setForm({ ...form, goal: e.target.value })} placeholder="e.g. 500 Meals or ₱100,000" style={inputStyle} />
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                            <div>
+                                <label style={labelStyle}>Start Date *</label>
+                                <input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} style={inputStyle} />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>End Date *</label>
+                                <input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} style={inputStyle} />
+                            </div>
+                        </div>
+
+                        <label style={labelStyle}>Address</label>
+                        <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Address" style={inputStyle} />
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                            <div>
+                                <label style={labelStyle}>Contact Person</label>
+                                <input value={form.contact_person} onChange={(e) => setForm({ ...form, contact_person: e.target.value })} placeholder="Contact Person" style={inputStyle} />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>Contact Number</label>
+                                <input value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} placeholder="09XXXXXXXXX" style={inputStyle} />
+                            </div>
+                        </div>
+
+                        <label style={labelStyle}>Email</label>
+                        <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="email@example.com" style={inputStyle} />
+
+                        {modalError && <p style={{ color: "red", fontSize: 13, marginTop: 8 }}>⚠️ {modalError}</p>}
+
+                        <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+                            <button onClick={() => setShowModal(false)} style={{ flex: 1, padding: "10px", borderRadius: 999, background: "#fff", color: "#333", border: "1px solid #ccc", fontWeight: 600, cursor: "pointer" }}>
+                                Cancel
+                            </button>
+                            <button onClick={handleSave} disabled={saving} style={{ flex: 2, padding: "10px", borderRadius: 999, background: "#2e7d32", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}>
+                                {saving ? "Saving..." : editTarget ? "Save Changes" : "Create Drive"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+        </div>
     );
-  };
-
-  // ── Save new row to backend ────────────────────────────────────────────────
-  const handleSaveRow = async (id) => {
-    const row = drives.find(d => d.id === id);
-    if (!row.title || !row.start_date || !row.end_date) {
-      alert("Please fill in at least Drive Title and Duration Dates.");
-      return;
-    }
-    setSavingId(id);
-    try {
-      // ── BACKEND READY: uncomment below ──
-      // const res = await api.post("/staff/donation-drives", row);
-      // setDrives(prev => prev.map(d => d.id === id ? { ...res.data, isNew: false } : d));
-
-      // ── DUMMY: just mark as saved ──
-      setDrives(prev =>
-        prev.map(d => d.id === id ? { ...d, isNew: false, id: Date.now() } : d)
-      );
-      setEditingRow(null);
-    } catch (err) {
-      console.error("Save error:", err);
-    } finally {
-      setSavingId(null);
-    }
-  };
-
-  // ── Cancel adding new row ──────────────────────────────────────────────────
-  const handleCancelRow = (id) => {
-    setDrives(prev => prev.filter(d => d.id !== id));
-    setEditingRow(null);
-  };
-
-  // ── Update status ──────────────────────────────────────────────────────────
-  const handleStatusChange = async (id, newStatus) => {
-    try {
-      // ── BACKEND READY: uncomment below ──
-      // await api.patch(`/staff/donation-drives/${id}/status`, { status: newStatus });
-      setDrives(prev =>
-        prev.map(d => d.id === id ? { ...d, status: newStatus } : d)
-      );
-    } catch (err) {
-      console.error("Status change error:", err);
-    }
-  };
-
-  return (
-    <div className="dd-drive-wrapper">
-
-      {/* ── NAVBAR ── */}
-      <NavBar_Staff />
-
-      <main className="dd-drive-main">
-
-        {/* ── PAGE HEADER ── */}
-        <div className="dd-drive-header">
-          <h1 className="dd-drive-heading">Donation Drive</h1>
-
-          <div className="dr-counters">
-            <div className="dr-counter dr-counter-pending">
-              <span className="material-symbols-rounded dr-counter-icon">schedule</span>
-              <span className="dr-counter-num">{pendingCount}</span>
-              <span className="dr-counter-label">Pending</span>
-            </div>
-            <div className="dr-counter dr-counter-allocated">
-              <span className="material-symbols-rounded dr-counter-icon">check_circle</span>
-              <span className="dr-counter-num">{ongoingCount}</span>
-              <span className="dr-counter-label">OnGoing</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── TOOLBAR ── */}
-        <div className="dr-toolbar">
-          <div className="dr-filters">
-            {["all", "pending", "ongoing", "cancelled", "done"].map((f) => (
-              <button
-                key={f}
-                className={`dr-filter-tab ${filter === f ? "dr-filter-active" : ""}`}
-                onClick={() => setFilter(f)}
-              >
-                {f === "ongoing" ? "OnGoing" : f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            ))}
-          </div>
-
-          <div className="dd-drive-toolbar-right">
-            <button className="dd-drive-add-btn" onClick={handleAddRow}>
-              <span className="material-symbols-rounded">add</span>
-              Add New Item
-            </button>
-            <div className="dr-search-wrap">
-              <input
-                className="dr-search"
-                type="text"
-                placeholder="Search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <span className="material-symbols-rounded dr-search-icon">search</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── TABLE ── */}
-        <div className="dd-drive-table-wrap">
-          <table className="dd-drive-table">
-            <thead>
-              <tr>
-                <th>STATUS</th>
-                <th>DRIVE TITLE</th>
-                <th>TYPE</th>
-                <th>GOAL</th>
-                <th>DURATION DATE</th>
-                <th>ADDRESS</th>
-                <th>CONTACT PERSON</th>
-                <th>NUMBER</th>
-                <th>EMAIL</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={10} className="dd-drive-empty">Loading…</td></tr>
-              ) : visible.length === 0 ? (
-                <tr><td colSpan={10} className="dd-drive-empty">No drives found.</td></tr>
-              ) : (
-                visible.map((d) => {
-                  const isNew     = d.isNew;
-                  const isEditing = editingRow === d.id;
-                  const statusCfg = STATUS_CONFIG[d.status] ?? STATUS_CONFIG.pending;
-                  const typeCfg   = TYPE_CONFIG[d.type]     ?? TYPE_CONFIG.financial;
-                  const busy      = savingId === d.id;
-
-                  return (
-                    <tr key={d.id} className={isNew ? "dd-drive-row-new" : ""}>
-
-                      {/* STATUS */}
-                      <td>
-                        {isNew ? (
-                          <select
-                            className="dd-drive-input dd-drive-select-sm"
-                            value={d.status}
-                            onChange={(e) => handleFieldChange(d.id, "status", e.target.value)}
-                          >
-                            {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-                              <option key={k} value={k}>{v.label}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <select
-                            className="dd-drive-status-select"
-                            value={d.status}
-                            style={{
-                              color: statusCfg.color,
-                              background: statusCfg.bg,
-                              borderColor: statusCfg.border,
-                            }}
-                            onChange={(e) => handleStatusChange(d.id, e.target.value)}
-                          >
-                            {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-                              <option key={k} value={k}>{v.label}</option>
-                            ))}
-                          </select>
-                        )}
-                      </td>
-
-                      {/* DRIVE TITLE */}
-                      <td>
-                        {isNew ? (
-                          <input
-                            className="dd-drive-input"
-                            type="text"
-                            placeholder="Drive Title"
-                            value={d.title}
-                            onChange={(e) => handleFieldChange(d.id, "title", e.target.value)}
-                          />
-                        ) : (
-                          <span className="dd-drive-title-text">{d.title}</span>
-                        )}
-                      </td>
-
-                      {/* TYPE */}
-                      <td>
-                        {isNew ? (
-                          <select
-                            className="dd-drive-input dd-drive-select-sm"
-                            value={d.type}
-                            onChange={(e) => handleFieldChange(d.id, "type", e.target.value)}
-                          >
-                            {Object.entries(TYPE_CONFIG).map(([k, v]) => (
-                              <option key={k} value={k}>{v.label}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span
-                            className="dd-drive-type-badge"
-                            style={{ color: typeCfg.color, background: typeCfg.bg }}
-                          >
-                            {typeCfg.label}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* GOAL */}
-                      <td>
-                        {isNew ? (
-                          <input
-                            className="dd-drive-input"
-                            type="text"
-                            placeholder="e.g. ₱ 100,000"
-                            value={d.goal_label}
-                            onChange={(e) => handleFieldChange(d.id, "goal_label", e.target.value)}
-                          />
-                        ) : (
-                          d.goal_label
-                        )}
-                      </td>
-
-                      {/* DURATION DATE */}
-                      <td>
-                        {isNew ? (
-                          <div className="dd-drive-date-row">
-                            <input
-                              className="dd-drive-input"
-                              type="date"
-                              value={d.start_date}
-                              onChange={(e) => handleFieldChange(d.id, "start_date", e.target.value)}
-                            />
-                            <span className="dd-drive-date-sep">|</span>
-                            <input
-                              className="dd-drive-input"
-                              type="date"
-                              value={d.end_date}
-                              onChange={(e) => handleFieldChange(d.id, "end_date", e.target.value)}
-                            />
-                          </div>
-                        ) : (
-                          <span className="dd-drive-date-badge">
-                            {d.start_date} | {d.end_date}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* ADDRESS */}
-                      <td>
-                        {isNew ? (
-                          <input
-                            className="dd-drive-input"
-                            type="text"
-                            placeholder="Address"
-                            value={d.address}
-                            onChange={(e) => handleFieldChange(d.id, "address", e.target.value)}
-                          />
-                        ) : (
-                          d.address
-                        )}
-                      </td>
-
-                      {/* CONTACT PERSON */}
-                      <td>
-                        {isNew ? (
-                          <input
-                            className="dd-drive-input"
-                            type="text"
-                            placeholder="Contact Person"
-                            value={d.contact_person}
-                            onChange={(e) => handleFieldChange(d.id, "contact_person", e.target.value)}
-                          />
-                        ) : (
-                          d.contact_person
-                        )}
-                      </td>
-
-                      {/* NUMBER */}
-                      <td>
-                        {isNew ? (
-                          <input
-                            className="dd-drive-input"
-                            type="text"
-                            placeholder="Number"
-                            value={d.contact_number}
-                            onChange={(e) => handleFieldChange(d.id, "contact_number", e.target.value)}
-                          />
-                        ) : (
-                          d.contact_number
-                        )}
-                      </td>
-
-                      {/* EMAIL */}
-                      <td>
-                        {isNew ? (
-                          <input
-                            className="dd-drive-input"
-                            type="email"
-                            placeholder="Email"
-                            value={d.contact_email}
-                            onChange={(e) => handleFieldChange(d.id, "contact_email", e.target.value)}
-                          />
-                        ) : (
-                          <span className="dd-drive-email">{d.contact_email}</span>
-                        )}
-                      </td>
-
-                      {/* ACTIONS */}
-                      <td className="dd-drive-actions-cell">
-                        {isNew ? (
-                          <div className="dd-drive-row-actions">
-                            <button
-                              className="dd-drive-save-btn"
-                              onClick={() => handleSaveRow(d.id)}
-                              disabled={busy}
-                            >
-                              {busy ? "Saving…" : "Save"}
-                            </button>
-                            <button
-                              className="dd-drive-cancel-btn"
-                              onClick={() => handleCancelRow(d.id)}
-                              disabled={busy}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : null}
-                      </td>
-
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-      </main>
-    </div>
-  );
 }

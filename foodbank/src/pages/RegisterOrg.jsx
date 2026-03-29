@@ -1,7 +1,10 @@
 import { useState } from "react";
 import api from "../services/api";
+import OtpVerification from "../components/OtpVerification";
 
 export default function RegisterOrg() {
+  const [step, setStep] = useState("register"); // "register" | "verify" | "done"
+  const [userId, setUserId] = useState(null);
   const [form, setForm] = useState({
     org_name: "",
     website: "",
@@ -22,8 +25,6 @@ export default function RegisterOrg() {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-
-    // ✅ CLEAR ERROR ON FIELD CHANGE
     if (errors[e.target.name]) {
       setErrors((prev) => ({ ...prev, [e.target.name]: null }));
     }
@@ -32,11 +33,9 @@ export default function RegisterOrg() {
   const validate = () => {
     const newErrors = {};
 
-    // ── ORG NAME ──
     if (!form.org_name.trim())
       newErrors.org_name = "Organization name is required.";
 
-    // ── WEBSITE ──
     if (form.website.trim()) {
       try {
         new URL(form.website.trim());
@@ -45,31 +44,26 @@ export default function RegisterOrg() {
       }
     }
 
-    // ── INDUSTRY & TYPE (required dropdowns) ──
     if (!form.industry || form.industry === "Industry / Sector")
       newErrors.industry = "Please select an industry/sector.";
     if (!form.type || form.type === "Organization Type")
       newErrors.type = "Please select an organization type.";
 
-    // ── CONTACT PERSON ──
     if (!form.contact_person.trim())
       newErrors.contact_person = "Contact person is required.";
 
-    // ── EMAIL ──
     if (!form.email.trim()) {
       newErrors.email = "Email is required.";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       newErrors.email = 'Email must contain "@" and ".".';
     }
 
-    // ── CONTACT NUMBER ──
     if (!form.contact.trim()) {
       newErrors.contact = "Contact number is required.";
     } else if (!/^\d{11}$/.test(form.contact.trim())) {
       newErrors.contact = "Contact number must be exactly 11 digits.";
     }
 
-    // ── PASSWORD ──
     if (!form.password) {
       newErrors.password = "Password is required.";
     } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(form.password)) {
@@ -77,7 +71,6 @@ export default function RegisterOrg() {
         "Password must be at least 8 characters with uppercase, lowercase, and a number.";
     }
 
-    // ── CONFIRM PASSWORD ──
     if (!form.password_confirmation) {
       newErrors.password_confirmation = "Please confirm your password.";
     } else if (form.password !== form.password_confirmation) {
@@ -88,7 +81,6 @@ export default function RegisterOrg() {
   };
 
   const handleSubmit = async () => {
-    // ✅ RUN CLIENT-SIDE VALIDATION FIRST
     const clientErrors = validate();
     if (Object.keys(clientErrors).length > 0) {
       setErrors(clientErrors);
@@ -99,14 +91,16 @@ export default function RegisterOrg() {
     setErrors({});
 
     try {
-      await api.post("/register", {
+      // ✅ CAPTURE res TO GET user_id
+      const res = await api.post("/register", {
         ...form,
         role: "organization",
       });
 
-      alert("Organization Registered!");
+      // ✅ SAVE user_id AND MOVE TO OTP STEP
+      setUserId(res.data.user_id);
+      setStep("verify");
 
-      // ✅ RESET FORM AFTER SUCCESS
       setForm({
         org_name: "",
         website: "",
@@ -125,7 +119,6 @@ export default function RegisterOrg() {
       const statusCode = err.response?.status;
 
       if (laravelErrors) {
-        // ✅ MAP LARAVEL VALIDATION ERRORS TO FIELDS
         const mapped = {};
         for (const field in laravelErrors) {
           mapped[field] = laravelErrors[field][0];
@@ -142,6 +135,39 @@ export default function RegisterOrg() {
       setLoading(false);
     }
   };
+
+  // ── STEP: OTP VERIFICATION ──
+  if (step === "verify") {
+    return (
+      <OtpVerification
+        userId={userId}
+        onSuccess={() => setStep("done")}
+      />
+    );
+  }
+
+  // ── STEP: SUCCESS ──
+  if (step === "done") {
+    return (
+      <div className="relative min-h-screen flex items-center justify-center bg-foodbank">
+        <div className="absolute inset-0 bg-green-900/60 backdrop-blur-sm"></div>
+        <div className="relative form-card fade-in text-center p-8">
+          <img
+            src="/images/logobrown.png"
+            alt="FoodBank Logo"
+            className="w-48 mx-auto mb-4"
+          />
+          <h2 className="text-2xl font-semibold text-gray-800">🎉 Account Verified!</h2>
+          <p className="text-gray-500 mt-2">
+            Your email has been verified. You can now log in.
+          </p>
+          <a href="/login" className="btn-register mt-6 inline-block">
+            Go to Login
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   // ✅ COLLECT ALL ACTIVE ERRORS INTO A LIST
   const errorList = Object.entries(errors)
@@ -295,7 +321,7 @@ export default function RegisterOrg() {
           </span>
         </div>
 
-        {/* ✅ ERROR SUMMARY — BELOW FORM, ABOVE BUTTON */}
+        {/* ✅ ERROR SUMMARY */}
         {errorList.length > 0 && (
           <div className="error-summary">
             <p className="error-summary-title">⚠️ Please fix the following:</p>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
-const API_DONATION_URL = "http://localhost:8000/api/contact/donation-request";
+const API_DONATION_URL = "http://localhost:8000/api/donation-requests";
 const API_INQUIRY_URL  = "http://localhost:8000/api/contact/inquiry";
 
 const EMPTY_DONATION = {
