@@ -3,8 +3,9 @@ import { NavLink } from "react-router-dom";
 import api from "../services/api";
 
 const navItems = [
-  { label: "Dashboard", path: "/donor/dashboard" },
-  { label: "Donate",    path: "/donate"           },
+  { label: "Dashboard",      path: "/beneficiary/dashboard"       },
+  { label: "Create Request", path: "/beneficiary/create-request"  },
+  { label: "Track Request",  path: "/beneficiary/track-request"   },
 ];
 
 const iconConfig = (type) => {
@@ -27,24 +28,32 @@ const timeAgo = (dateStr) => {
   return new Date(dateStr).toLocaleDateString();
 };
 
-export default function NavBar_Donor() {
-  const [donorName,     setDonorName]     = useState("Donor Name");
-  const [bellOpen,      setBellOpen]      = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount,   setUnreadCount]   = useState(0);
-  const [notifLoading,  setNotifLoading]  = useState(false);
-  const bellRef = useRef(null);
+export default function NavBar_Beneficiary() {
+  const [beneficiaryName, setBeneficiaryName] = useState("Beneficiary Name");
+  const [bellOpen,        setBellOpen]        = useState(false);
+  const [notifications,   setNotifications]   = useState([]);
+  const [unreadCount,     setUnreadCount]     = useState(0);
+  const [notifLoading,    setNotifLoading]    = useState(false);
+  const [profileOpen,     setProfileOpen]     = useState(false);
+  const bellRef    = useRef(null);
+  const profileRef = useRef(null);
 
+  // ── Fetch beneficiary profile ─────────────────────────────────────────────
+  // TODO (backend): GET /api/beneficiary/profile
+  // Returns: { name: string, email: string, organization: string }
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await api.get("/donor/profile");
-        setDonorName(res.data.name);
+        const res = await api.get("/beneficiary/profile");
+        setBeneficiaryName(res.data.name);
       } catch (_) {}
     };
     fetchProfile();
   }, []);
 
+  // ── Fetch notifications ───────────────────────────────────────────────────
+  // TODO (backend): GET /api/notifications
+  // Returns: [{ id, type, title, message, read_at, created_at }]
   const fetchNotifications = async () => {
     setNotifLoading(true);
     try {
@@ -61,19 +70,22 @@ export default function NavBar_Donor() {
     return () => clearInterval(interval);
   }, []);
 
+  // ── Close panels on outside click ────────────────────────────────────────
   useEffect(() => {
     const handleOutside = (e) => {
-      if (bellRef.current && !bellRef.current.contains(e.target)) {
-        setBellOpen(false);
-      }
+      if (bellRef.current && !bellRef.current.contains(e.target))       setBellOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
     };
-    if (bellOpen) document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
-  }, [bellOpen]);
+  }, []);
 
+  // ── Bell click — mark all read on open ───────────────────────────────────
+  // TODO (backend): POST /api/notifications/mark-all-read
   const handleBellClick = async () => {
     const opening = !bellOpen;
     setBellOpen(opening);
+    if (profileOpen) setProfileOpen(false);
     if (opening && unreadCount > 0) {
       try {
         await api.post("/notifications/mark-all-read");
@@ -85,6 +97,8 @@ export default function NavBar_Donor() {
     }
   };
 
+  // ── Mark single notification read ────────────────────────────────────────
+  // TODO (backend): POST /api/notifications/:id/mark-read
   const markRead = async (id) => {
     try {
       await api.post(`/notifications/${id}/mark-read`);
@@ -95,6 +109,8 @@ export default function NavBar_Donor() {
     } catch (_) {}
   };
 
+  // ── Logout ────────────────────────────────────────────────────────────────
+  // TODO (backend): POST /api/logout — invalidates the bearer token
   const handleLogout = async () => {
     try { await api.post("/logout"); } catch (_) {}
     localStorage.removeItem("token");
@@ -125,7 +141,7 @@ export default function NavBar_Donor() {
         ))}
       </ul>
 
-      {/* RIGHT SIDE: BELL + USER */}
+      {/* RIGHT SIDE: BELL + PROFILE */}
       <div className="user-navbar-right">
 
         {/* NOTIFICATION BELL */}
@@ -147,7 +163,6 @@ export default function NavBar_Donor() {
 
           {bellOpen && (
             <div className="notif-panel">
-
               <div className="notif-panel-header">
                 <h3 className="notif-panel-title">Notifications &amp; Recent Activities</h3>
                 {unreadCount === 0 && notifications.length > 0 && (
@@ -212,18 +227,65 @@ export default function NavBar_Donor() {
                   </button>
                 </div>
               )}
-
             </div>
           )}
         </div>
 
-        {/* DONOR NAME + LOGOUT */}
-        <div className="user-navbar-user">
-          <span className="material-symbols-rounded user-navbar-avatar">account_circle</span>
-          <span className="user-navbar-name">{donorName}</span>
-          <button className="user-navbar-logout" onClick={handleLogout} title="Logout">
-            <span className="material-symbols-rounded">logout</span>
+        {/* PROFILE DROPDOWN */}
+        <div className="notif-bell-wrap" ref={profileRef}>
+          <button
+            className={`notif-bell-btn ${profileOpen ? "notif-bell-active" : ""}`}
+            onClick={() => { setProfileOpen((p) => !p); setBellOpen(false); }}
+            aria-label="Profile"
+          >
+            <span
+              className="material-symbols-rounded notif-bell-icon"
+              style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+            >
+              account_circle
+            </span>
           </button>
+
+          {profileOpen && (
+            <div className="notif-panel" style={{ minWidth: 220 }}>
+              <div className="notif-panel-header" style={{ flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#222" }}>{beneficiaryName}</p>
+                <p style={{ margin: 0, fontSize: 11, color: "#aaa" }}>Beneficiary Account</p>
+              </div>
+              <ul className="notif-panel-list" style={{ padding: "6px 0" }}>
+                <li
+                  className="notif-panel-item"
+                  onClick={() => { window.location.href = "/beneficiary/profile"; setProfileOpen(false); }}
+                  style={{ cursor: "pointer" }}
+                >
+                  <div className="notif-panel-dot" style={{ background: "#2e7d32" }}>
+                    <span className="material-symbols-rounded" style={{ fontSize: 16, color: "white", fontVariationSettings: "'FILL' 1" }}>
+                      manage_accounts
+                    </span>
+                  </div>
+                  <div className="notif-panel-body">
+                    <p className="notif-panel-name">My Profile</p>
+                    <p className="notif-panel-desc">View and edit your details</p>
+                  </div>
+                </li>
+                <li
+                  className="notif-panel-item"
+                  onClick={handleLogout}
+                  style={{ cursor: "pointer" }}
+                >
+                  <div className="notif-panel-dot" style={{ background: "#c0392b" }}>
+                    <span className="material-symbols-rounded" style={{ fontSize: 16, color: "white", fontVariationSettings: "'FILL' 1" }}>
+                      logout
+                    </span>
+                  </div>
+                  <div className="notif-panel-body">
+                    <p className="notif-panel-name" style={{ color: "#c0392b" }}>Logout</p>
+                    <p className="notif-panel-desc">Sign out of your account</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          )}
         </div>
 
       </div>

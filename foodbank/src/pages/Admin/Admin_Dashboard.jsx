@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Chart as ChartJS,
@@ -10,43 +10,65 @@ import NavBar_Admin from "../../components/NavBar_Admin";
 import Sidebar from "../../components/Sidebar";
 import api from "../../services/api";
 
-// ── Register Chart.js components ─────────────────────────────────────────────
 ChartJS.register(
   CategoryScale, LinearScale, PointElement, LineElement,
   ArcElement, BarElement, Title, Tooltip, Legend, Filler
 );
 
+// ── STAT CARDS — swap icon src as needed ──────────────────────────────────────
+const STAT_CARDS = [
+  {
+    key:    "total_donations",
+    label:  "TOTAL DONATIONS MADE",
+    icon:   "/images/Admin_Donation.png",   // ← swap me
+    prefix: "₱",
+    format: (v) => Number(v).toLocaleString(),
+  },
+  {
+    key:    "meals_served",
+    label:  "MEALS SERVED",
+    icon:   "/images/Admin_MealServed.png", // ← swap me
+    prefix: "",
+    format: (v) => Number(v).toLocaleString(),
+  },
+  {
+    key:    "active_drives",
+    label:  "ACTIVE FOOD DRIVES",
+    icon:   "/images/Admin_Drives.png",     // ← swap me
+    prefix: "",
+    format: (v) => v,
+  },
+];
+
 export default function Admin_Dashboard() {
   const navigate = useNavigate();
 
   // ── State ─────────────────────────────────────────────────────────────────
-  const [stats, setStats] = useState({
-    total_donations: 0,
-    meals_served: 0,
-    active_drives: 0,
-  });
-  const [drives, setDrives]               = useState([]);
+  const [stats, setStats]         = useState({ total_donations: 0, meals_served: 0, active_drives: 0 });
+  const [adminName, setAdminName] = useState("Administrator");
+  const [drives, setDrives]       = useState([]);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [selectedDrive, setSelectedDrive] = useState(null);
 
-  const [trendData, setTrendData]         = useState({ labels: [], values: [] });
-  const [typeData, setTypeData]           = useState({ labels: [], values: [] });
+  const [trendData,       setTrendData]       = useState({ labels: [], values: [] });
+  const [typeData,        setTypeData]        = useState({ labels: [], values: [] });
   const [beneficiaryData, setBeneficiaryData] = useState({ labels: [], values: [] });
-  const [regionData, setRegionData]       = useState({ labels: [], values: [] });
+  const [regionData,      setRegionData]      = useState({ labels: [], values: [] });
 
-  const [loading, setLoading]             = useState(true);
+  const [loading,       setLoading]       = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
 
-  // ── Fetch all data ─────────────────────────────────────────────────────────
+  // ── Fetch ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     const init = async () => {
       try {
         const [
-          statsRes, drivesRes,
+          statsRes, drivesRes, profileRes,
           trendRes, typeRes, beneficiaryRes, regionRes,
         ] = await Promise.all([
           api.get("/admin/dashboard/stats"),
           api.get("/admin/drives"),
+          api.get("/admin/profile"),
           api.get("/admin/charts/donation-trends"),
           api.get("/admin/charts/donation-types"),
           api.get("/admin/charts/beneficiary-types"),
@@ -54,6 +76,7 @@ export default function Admin_Dashboard() {
         ]);
         setStats(statsRes.data);
         setDrives(drivesRes.data);
+        setAdminName(profileRes.data.name ?? "Administrator");
         setTrendData(trendRes.data);
         setTypeData(typeRes.data);
         setBeneficiaryData(beneficiaryRes.data);
@@ -67,20 +90,20 @@ export default function Admin_Dashboard() {
     init();
   }, []);
 
-  // ── Carousel controls ──────────────────────────────────────────────────────
-  const VISIBLE = 3;
-  const canPrev = carouselIndex > 0;
-  const canNext = carouselIndex + VISIBLE < drives.length;
+  // ── Carousel ───────────────────────────────────────────────────────────────
+  const VISIBLE      = 3;
+  const canPrev      = carouselIndex > 0;
+  const canNext      = carouselIndex + VISIBLE < drives.length;
   const visibleDrives = drives.slice(carouselIndex, carouselIndex + VISIBLE);
 
-  // ── Export PDF ────────────────────────────────────────────────────────────
+  // ── Export PDF ─────────────────────────────────────────────────────────────
   const handleExportPDF = async () => {
     setExportLoading(true);
     try {
-      const res = await api.get("/admin/dashboard/export-pdf", { responseType: "blob" });
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const res  = await api.get("/admin/dashboard/export-pdf", { responseType: "blob" });
+      const url  = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
       const link = document.createElement("a");
-      link.href = url;
+      link.href  = url;
       link.setAttribute("download", "admin_dashboard_report.pdf");
       document.body.appendChild(link);
       link.click();
@@ -93,138 +116,83 @@ export default function Admin_Dashboard() {
     }
   };
 
-  // ── Chart configs ─────────────────────────────────────────────────────────
+  // ── Chart configs ──────────────────────────────────────────────────────────
   const lineChartData = {
     labels: trendData.labels,
     datasets: [{
-      label: "Donation Amount (₱)",
-      data: trendData.values,
-      borderColor: "#2e7d32",
-      backgroundColor: "rgba(46,125,50,0.08)",
+      label:              "Donation Amount (₱)",
+      data:               trendData.values,
+      borderColor:        "#2e7d32",
+      backgroundColor:    "rgba(46,125,50,0.08)",
       pointBackgroundColor: "#2e7d32",
-      pointRadius: 5,
-      tension: 0.4,
-      fill: true,
+      pointRadius:        5,
+      tension:            0.4,
+      fill:               true,
     }],
   };
-
   const lineChartOptions = {
     responsive: true,
-    plugins: {
-      legend: { position: "top" },
-      title: { display: false },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          callback: (v) => `₱${Number(v).toLocaleString()}`,
-        },
-      },
-    },
+    plugins: { legend: { position: "top" }, title: { display: false } },
+    scales:  { y: { beginAtZero: true, ticks: { callback: (v) => `₱${Number(v).toLocaleString()}` } } },
   };
 
   const doughnutColors = ["#2e7d32", "#66bb6a", "#f4b942", "#c96a2e"];
-
   const typeChartData = {
     labels: typeData.labels,
-    datasets: [{
-      data: typeData.values,
-      backgroundColor: doughnutColors,
-      borderWidth: 2,
-      borderColor: "white",
-    }],
+    datasets: [{ data: typeData.values, backgroundColor: doughnutColors, borderWidth: 2, borderColor: "white" }],
   };
-
   const beneficiaryChartData = {
     labels: beneficiaryData.labels,
-    datasets: [{
-      data: beneficiaryData.values,
-      backgroundColor: ["#2e7d32", "#66bb6a", "#a5d6a7", "#f4b942", "#c96a2e"],
-      borderWidth: 2,
-      borderColor: "white",
-    }],
+    datasets: [{ data: beneficiaryData.values, backgroundColor: ["#2e7d32","#66bb6a","#a5d6a7","#f4b942","#c96a2e"], borderWidth: 2, borderColor: "white" }],
   };
-
-  const doughnutOptions = {
-    responsive: true,
-    plugins: { legend: { position: "right" } },
-    cutout: "60%",
-  };
+  const doughnutOptions = { responsive: true, plugins: { legend: { position: "right" } }, cutout: "60%" };
 
   const barChartData = {
     labels: regionData.labels,
     datasets: [
-      {
-        label: "Financial",
-        data: regionData.financial ?? [],
-        backgroundColor: "#2e7d32",
-      },
-      {
-        label: "Food",
-        data: regionData.food ?? [],
-        backgroundColor: "#66bb6a",
-      },
-      {
-        label: "Other",
-        data: regionData.other ?? [],
-        backgroundColor: "#c8e6c9",
-      },
+      { label: "Financial", data: regionData.financial ?? [], backgroundColor: "#2e7d32" },
+      { label: "Food",      data: regionData.food      ?? [], backgroundColor: "#66bb6a" },
+      { label: "Other",     data: regionData.other     ?? [], backgroundColor: "#c8e6c9" },
     ],
   };
-
   const barChartOptions = {
     responsive: true,
     plugins: { legend: { position: "top" } },
-    scales: { x: { stacked: false }, y: { beginAtZero: true } },
+    scales:  { x: { stacked: false }, y: { beginAtZero: true } },
   };
-
-  // ── Stat card definitions ─────────────────────────────────────────────────
-  const STAT_CARDS = [
-    {
-      key: "total_donations",
-      label: "Total Donations Made",
-      icon: "/images/Admin_Donation.png",
-      prefix: "₱",
-      format: (v) => Number(v).toLocaleString(),
-    },
-    {
-      key: "meals_served",
-      label: "Meals Served",
-      icon: "/images/Admin_MealServed.png",
-      prefix: "",
-      format: (v) => Number(v).toLocaleString(),
-    },
-    {
-      key: "active_drives",
-      label: "Active Food Drives",
-      icon: "/images/Admin_Drives.png",
-      prefix: "",
-      format: (v) => v,
-    },
-  ];
 
   return (
     <div className="sd-wrapper">
-
-      {/* ── NAVBAR ── */}
       <NavBar_Admin />
 
       <div className="sd-layout">
-
-        {/* ════ MAIN CONTENT ════ */}
         <main className="sd-main">
-          <h1 className="sd-heading">Administrative Dashboard</h1>
 
-          {/* ── STAT CARDS ── */}
-          <div className="sd-cards" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+          {/* ── HERO BANNER ── */}
+          <div className="sd-banner">
+            <img src="/images/Background2.png" alt="banner" className="sd-banner-bg" />
+            <div className="sd-banner-overlay" />
+            <div className="sd-banner-content">
+              <p className="sd-banner-greeting">Good Day!</p>
+              <h1 className="sd-banner-name">{adminName}</h1>
+              <p className="sd-banner-meta">Administrative Dashboard</p>
+              <p className="sd-banner-sub">
+                Here's your system overview — keep driving the mission forward.
+              </p>
+            </div>
+          </div>
+
+          {/* ── STAT CARDS — glass style matching Staff ── */}
+          <div className="sd-cards" style={{ gridTemplateColumns: "repeat(3, 1fr)", marginBottom: "40px" }}>
             {STAT_CARDS.map((card) => (
-              <div className="sd-card" key={card.key}>
-                <img src={card.icon} alt={card.label} className="sd-card-icon" />
-                <p className="sd-card-label">{card.label}</p>
-                <p className="sd-card-value">
-                  {loading ? "—" : `${card.prefix} ${card.format(stats[card.key])}`}
-                </p>
+              <div className="sd-glass-card" key={card.key}>
+                <img src={card.icon} alt={card.label} className="sd-glass-card-icon" />
+                <div className="sd-glass-card-info">
+                  <p className="sd-glass-card-value">
+                    {loading ? "—" : `${card.prefix}${card.prefix ? " " : ""}${card.format(stats[card.key])}`}
+                  </p>
+                  <p className="sd-glass-card-label">{card.label}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -232,9 +200,7 @@ export default function Admin_Dashboard() {
           {/* ── ONGOING FOOD DRIVES ── */}
           <div className="adm-drives-section">
             <h2 className="adm-drives-heading">Ongoing Food Drives</h2>
-
             <div className="adm-carousel">
-              {/* LEFT ARROW */}
               <button
                 className="adm-carousel-arrow"
                 onClick={() => setCarouselIndex((i) => i - 1)}
@@ -243,7 +209,6 @@ export default function Admin_Dashboard() {
                 <span className="material-symbols-rounded">chevron_left</span>
               </button>
 
-              {/* DRIVE CARDS */}
               <div className="adm-carousel-track">
                 {loading ? (
                   <p className="adm-drives-loading">Loading drives…</p>
@@ -252,31 +217,20 @@ export default function Admin_Dashboard() {
                 ) : (
                   visibleDrives.map((drive) => (
                     <div className="adm-drive-card" key={drive.id}>
-                      {/* STATUS BADGE */}
                       <span className="adm-drive-status">ACTIVE</span>
-
                       <h3 className="adm-drive-title">{drive.title}</h3>
                       <p className="adm-drive-desc">{drive.description}</p>
-
-                      {/* PROGRESS BAR */}
                       <div className="adm-drive-progress-wrap">
                         <div
                           className="adm-drive-progress-fill"
-                          style={{
-                            width: `${Math.min((drive.current / drive.goal) * 100, 100)}%`,
-                          }}
+                          style={{ width: `${Math.min((drive.current / drive.goal) * 100, 100)}%` }}
                         />
                       </div>
                       <div className="adm-drive-progress-labels">
                         <span>₱{Number(drive.current).toLocaleString()}</span>
                         <span>₱{Number(drive.goal).toLocaleString()}</span>
                       </div>
-
-                      {/* VIEW DETAILS */}
-                      <button
-                        className="adm-drive-btn"
-                        onClick={() => setSelectedDrive(drive)}
-                      >
+                      <button className="adm-drive-btn" onClick={() => setSelectedDrive(drive)}>
                         View Details
                       </button>
                     </div>
@@ -284,7 +238,6 @@ export default function Admin_Dashboard() {
                 )}
               </div>
 
-              {/* RIGHT ARROW */}
               <button
                 className="adm-carousel-arrow"
                 onClick={() => setCarouselIndex((i) => i + 1)}
@@ -295,14 +248,13 @@ export default function Admin_Dashboard() {
             </div>
           </div>
 
-          {/* ── DRIVE DETAILS POPUP ── */}
+          {/* ── DRIVE DETAILS MODAL ── */}
           {selectedDrive && (
             <div className="adm-modal-overlay" onClick={() => setSelectedDrive(null)}>
               <div className="adm-modal" onClick={(e) => e.stopPropagation()}>
                 <button className="adm-modal-close" onClick={() => setSelectedDrive(null)}>
                   <span className="material-symbols-rounded">close</span>
                 </button>
-
                 <table className="adm-modal-table">
                   <tbody>
                     <tr><td>Drive Title</td>    <td><strong>{selectedDrive.title}</strong></td></tr>
@@ -319,15 +271,15 @@ export default function Admin_Dashboard() {
             </div>
           )}
 
-          {/* ── DONATION TRENDS LINE CHART ── */}
+          {/* ── DONATION TRENDS ── */}
           <div className="adm-chart-card">
             <h2 className="adm-chart-title">
-              Donation Trends <span style={{ fontWeight: 400, fontSize: 20 }}>(Last 30 Days)</span>
+              Donation Trends <span style={{ fontWeight: 400, fontSize: 18 }}>(Last 30 Days)</span>
             </h2>
             <Line data={lineChartData} options={lineChartOptions} />
           </div>
 
-          {/* ── PIE CHARTS ROW ── */}
+          {/* ── PIE CHARTS ── */}
           <div className="adm-charts-row">
             <div className="adm-chart-card adm-chart-half">
               <h2 className="adm-chart-title">Donation Types Distribution</h2>
@@ -347,11 +299,7 @@ export default function Admin_Dashboard() {
 
           {/* ── EXPORT PDF ── */}
           <div className="dd-export-row">
-            <button
-              className="dd-export-btn"
-              onClick={handleExportPDF}
-              disabled={exportLoading}
-            >
+            <button className="dd-export-btn" onClick={handleExportPDF} disabled={exportLoading}>
               <span className="material-symbols-rounded">download</span>
               {exportLoading ? "Exporting…" : "Export to PDF"}
             </button>
@@ -359,9 +307,7 @@ export default function Admin_Dashboard() {
 
         </main>
 
-        {/* ════ SIDEBAR ════ */}
         <Sidebar apiEndpoint="/admin/notifications" />
-
       </div>
     </div>
   );

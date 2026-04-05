@@ -4,43 +4,70 @@ export default function Register() {
   const navigate = useNavigate();
 
   return (
-    <div className="bg-foodbank relative">
+    <div className="reg-main-bg">
+      {/* NAVBAR */}
+      <nav className="navbar">
+        <div className="logo">
+          <img src="/images/logobrown.png" alt="Logo" style={{ height: "40px" }} />
+        </div>
+        <div className="nav-links">
+          <a href="/home">Home</a>
+          <a href="/about">About</a>
+          <a href="/partners">Partners</a>
+          <a href="/media">Media</a>
+          <a href="/contact">Contact</a>
+        </div>
+      </nav>
 
-      {/* ✅ LOGO TOP LEFT */}
-      <img
-        src="/images/logoo.png"
-        alt="FoodBank Logo"
-        className="absolute top-6 left-10 w-60 z-20"
-      />
-
-      {/* ✅ CENTER CONTENT */}
-      <div className="relative z-20 text-center text-white">
-        <h1 className="text-4xl font-bold mb-10 tracking-wide">
-          REGISTRATION PAGE
+      {/* CONTENT */}
+      <div className="reg-main-content fade-in">
+        <h1 className="reg-main-title">
+          CHOOSE YOUR <span className="reg-main-title-accent">ROLE</span>
         </h1>
+        <p className="reg-main-subtitle">
+          Select how you want to use SAVR. This helps us customize your experience.
+        </p>
 
-        <div className="flex gap-10 justify-center">
-
+        <div className="reg-main-cards">
           {/* DONOR CARD */}
-          <div
+          <button
+            className="reg-role-card"
             onClick={() => navigate("/register/donor")}
-            className="w-56 h-56 bg-white/20 rounded-2xl flex flex-col items-center justify-center cursor-pointer 
-                       hover:scale-110 hover:shadow-2xl transition duration-300 backdrop-blur-sm"
           >
-            <span className="text-5xl mb-2">👤</span>
-            <h2 className="text-lg font-semibold">DONOR</h2>
-          </div>
+            <div className="reg-role-card-inner">
+              <img
+                src="/images/Glass_Donor.png"
+                alt="Donor"
+                className="reg-role-icon"
+              />
+              <div className="reg-role-info">
+                <h2 className="reg-role-title">DONOR</h2>
+                <p className="reg-role-desc">
+                  Donate food to individuals or communities in need
+                </p>
+              </div>
+            </div>
+          </button>
 
-          {/* ORGANIZATION CARD */}
-          <div
-            onClick={() => navigate("/register/org")}
-            className="w-56 h-56 bg-white/20 rounded-2xl flex flex-col items-center justify-center cursor-pointer 
-                       hover:scale-110 hover:shadow-2xl transition duration-300 backdrop-blur-sm"
+          {/* BENEFICIARY CARD */}
+          <button
+            className="reg-role-card"
+            onClick={() => navigate("/register/beneficiary")}
           >
-            <span className="text-5xl mb-2">👥</span>
-            <h2 className="text-lg font-semibold">ORGANIZATION</h2>
-          </div>
-
+            <div className="reg-role-card-inner">
+              <img
+                src="/images/Glass_Beneficiary.png"
+                alt="Beneficiary"
+                className="reg-role-icon"
+              />
+              <div className="reg-role-info">
+                <h2 className="reg-role-title">BENEFICIARY</h2>
+                <p className="reg-role-desc">
+                  Request food assistance for yourself or your community
+                </p>
+              </div>
+            </div>
+          </button>
         </div>
       </div>
     </div>

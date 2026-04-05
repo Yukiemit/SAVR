@@ -263,7 +263,7 @@ function OrgForm({ form, errors, handleChange, showPassword, setShowPassword, sh
         </div>
       </div>
 
-      {/* ROW 3: Contact Person, Last Name, Contact Number, Email */}
+      {/* ROW 3: Contact Person fields */}
       <div className="reg-form-row">
         <div className="reg-field">
           <label className="reg-label">First Name</label>
@@ -347,20 +347,17 @@ function OrgForm({ form, errors, handleChange, showPassword, setShowPassword, sh
 }
 
 // ── MAIN COMPONENT ──
-export default function RegisterDonor() {
-  const [tab, setTab] = useState("individual"); // "individual" | "organization"
-  const [step, setStep] = useState("register"); // "register" | "verify" | "done"
+export default function RegisterBeneficiary() {
+  const [tab, setTab] = useState("individual");
+  const [step, setStep] = useState("register");
   const [userId, setUserId] = useState(null);
 
   const [form, setForm] = useState({
-    // individual
     first_name: "", middle_name: "", last_name: "", suffix: "",
     gender: "", dob: "",
     house: "", street: "", barangay: "", city: "", province: "", zip: "",
     contact: "", email: "", password: "", password_confirmation: "",
-    // org
     org_name: "", website: "", industry: "", type: "",
-    contact_person: "", position: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -428,8 +425,8 @@ export default function RegisterDonor() {
 
     try {
       const payload = tab === "individual"
-        ? { ...form, name: `${form.first_name} ${form.last_name}`, role: "donor" }
-        : { ...form, contact_person: `${form.first_name} ${form.last_name}`, role: "organization" };
+        ? { ...form, name: `${form.first_name} ${form.last_name}`, role: "beneficiary" }
+        : { ...form, contact_person: `${form.first_name} ${form.last_name}`, role: "beneficiary_org" };
 
       const res = await api.post("/register", payload);
       setUserId(res.data.user_id);
@@ -449,12 +446,10 @@ export default function RegisterDonor() {
     }
   };
 
-  // ── STEP: OTP ──
   if (step === "verify") {
     return <OtpVerification userId={userId} onSuccess={() => setStep("done")} />;
   }
 
-  // ── STEP: DONE ──
   if (step === "done") {
     return (
       <div className="bg-foodbank">
@@ -486,14 +481,13 @@ export default function RegisterDonor() {
         </div>
       </nav>
 
-      {/* PAGE CONTENT */}
       <div className="reg-detail-content fade-in">
 
         {/* TITLE */}
         <div className="reg-detail-heading">
-          <img src="/images/Glass_Donor.png" alt="Donor" className="reg-detail-heading-icon" />
+          <img src="/images/Glass_Beneficiary.png" alt="Beneficiary" className="reg-detail-heading-icon" />
           <h1 className="reg-detail-title">
-            <span className="reg-main-title-accent">DONOR</span> DETAIL
+            <span className="reg-main-title-accent">BENEFICIARY</span> DETAIL
           </h1>
         </div>
         <p className="reg-main-subtitle" style={{ marginBottom: "24px" }}>Please enter your details</p>
