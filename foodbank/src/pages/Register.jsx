@@ -11,7 +11,7 @@ export default function Register() {
           <img src="/images/logobrown.png" alt="Logo" style={{ height: "40px" }} />
         </div>
         <div className="nav-links">
-          <a href="/home">Home</a>
+          <a href="/">Home</a>
           <a href="/about">About</a>
           <a href="/partners">Partners</a>
           <a href="/media">Media</a>

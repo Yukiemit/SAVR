@@ -428,8 +428,8 @@ export default function RegisterDonor() {
 
     try {
       const payload = tab === "individual"
-        ? { ...form, name: `${form.first_name} ${form.last_name}`, role: "donor" }
-        : { ...form, contact_person: `${form.first_name} ${form.last_name}`, role: "organization" };
+    ? { ...form, name: `${form.first_name} ${form.last_name}`, role: "donor" }
+    : { ...form, contact_person: `${form.first_name} ${form.last_name}`, role: "donor_organization" };
 
       const res = await api.post("/register", payload);
       setUserId(res.data.user_id);

@@ -352,18 +352,26 @@ export default function RegisterBeneficiary() {
   const [step, setStep] = useState("register");
   const [userId, setUserId] = useState(null);
 
-  const [form, setForm] = useState({
+  const EMPTY_FORM = {
     first_name: "", middle_name: "", last_name: "", suffix: "",
     gender: "", dob: "",
     house: "", street: "", barangay: "", city: "", province: "", zip: "",
     contact: "", email: "", password: "", password_confirmation: "",
     org_name: "", website: "", industry: "", type: "",
-  });
+  };
 
+  const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  // ✅ Clear form AND errors when switching tabs
+  const handleTabSwitch = (newTab) => {
+    setTab(newTab);
+    setErrors({});
+    setForm(EMPTY_FORM);
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -417,16 +425,21 @@ export default function RegisterBeneficiary() {
   };
 
   const handleSubmit = async () => {
+    setErrors({}); // ✅ clear ALL errors first
+
     const clientErrors = tab === "individual" ? validateIndividual() : validateOrg();
-    if (Object.keys(clientErrors).length > 0) { setErrors(clientErrors); return; }
+    if (Object.keys(clientErrors).length > 0) {
+      setErrors(clientErrors);
+      return;
+    }
 
     setLoading(true);
-    setErrors({});
 
     try {
+      // ✅ correct role values matching Laravel
       const payload = tab === "individual"
-        ? { ...form, name: `${form.first_name} ${form.last_name}`, role: "beneficiary" }
-        : { ...form, contact_person: `${form.first_name} ${form.last_name}`, role: "beneficiary_org" };
+    ? { ...form, name: `${form.first_name} ${form.last_name}`, role: "beneficiary" }
+    : { ...form, contact_person: `${form.first_name} ${form.last_name}`, role: "beneficiary_organization" }; // ✅
 
       const res = await api.post("/register", payload);
       setUserId(res.data.user_id);
@@ -438,9 +451,13 @@ export default function RegisterBeneficiary() {
         const mapped = {};
         for (const field in laravelErrors) { mapped[field] = laravelErrors[field][0]; }
         setErrors(mapped);
-      } else if (statusCode === 422) { setErrors({ general: "Validation failed. Please check your inputs." }); }
-      else if (statusCode === 500) { setErrors({ general: "Server error. Please try again later." }); }
-      else { setErrors({ general: "Registration failed. Please try again." }); }
+      } else if (statusCode === 422) {
+        setErrors({ general: "Validation failed. Please check your inputs." });
+      } else if (statusCode === 500) {
+        setErrors({ general: "Server error. Please try again later." });
+      } else {
+        setErrors({ general: "Registration failed. Please try again." });
+      }
     } finally {
       setLoading(false);
     }
@@ -499,14 +516,14 @@ export default function RegisterBeneficiary() {
           <div className="reg-tabs">
             <button
               className={`reg-tab-btn ${tab === "individual" ? "reg-tab-active" : ""}`}
-              onClick={() => { setTab("individual"); setErrors({}); }}
+              onClick={() => handleTabSwitch("individual")}
             >
               <span className="material-symbols-rounded" style={{ fontSize: "18px" }}>person</span>
               INDIVIDUAL
             </button>
             <button
               className={`reg-tab-btn ${tab === "organization" ? "reg-tab-active" : ""}`}
-              onClick={() => { setTab("organization"); setErrors({}); }}
+              onClick={() => handleTabSwitch("organization")}
             >
               <span className="material-symbols-rounded" style={{ fontSize: "18px" }}>groups</span>
               ORGANIZATION

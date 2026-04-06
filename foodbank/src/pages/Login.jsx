@@ -20,7 +20,7 @@ export default function Login() {
     if (!form.email.trim()) {
       newErrors.email = "Email is required.";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      newErrors.email = 'Enter a valid email address.';
+      newErrors.email = "Enter a valid email address.";
     }
     if (!form.password) newErrors.password = "Password is required.";
     return newErrors;
@@ -35,7 +35,7 @@ export default function Login() {
 
     try {
       const res = await api.post("/login", {
-        email: form.email,
+        identifier: form.email,   // ✅ FIXED: was "email", Laravel expects "identifier"
         password: form.password,
         remember: form.remember,
       });
@@ -43,14 +43,22 @@ export default function Login() {
       const { token, role } = res.data;
       localStorage.setItem("token", token);
 
-      if (role === "admin") navigate("/admin/dashboard");
-      else if (role === "staff") navigate("/staff/dashboard");
-      else if (role === "donor") navigate("/donor/dashboard");
-      else navigate("/dashboard");
+      if (role === "admin")             navigate("/admin/dashboard");
+      else if (role === "staff")        navigate("/staff/dashboard");
+      else if (role === "donor")        navigate("/donor/dashboard");
+      else if (role === "beneficiary")  navigate("/beneficiary/dashboard");
+      else if (role === "organization") navigate("/org/dashboard");
 
     } catch (err) {
       const status = err.response?.status;
-      if (status === 401 || status === 422) {
+      const message = err.response?.data?.message;
+
+      if (status === 403 && message?.includes("verify")) {
+        const userId = err.response?.data?.user_id;
+        navigate(`/verify-otp?user_id=${userId}`);
+      } else if (status === 403) {
+        setErrors({ general: message || "Access denied." });
+      } else if (status === 401 || status === 422) {
         setErrors({ general: "Invalid email or password. Please try again." });
       } else {
         setErrors({ general: "Something went wrong. Please try again later." });
@@ -66,7 +74,6 @@ export default function Login() {
 
   return (
     <div className="reg-main-bg">
-      {/* NAVBAR */}
       <nav className="navbar">
         <div className="logo">
           <img src="/images/logobrown.png" alt="Logo" style={{ height: "40px" }} />
@@ -80,20 +87,10 @@ export default function Login() {
         </div>
       </nav>
 
-      {/* LOGIN CONTENT */}
       <div className="login-content fade-in">
+        <img src="/images/logoo.png" alt="FoodBank Logo" className="login-logo" />
 
-        {/* LOGO */}
-        <img
-          src="/images/logoo.png"
-          alt="FoodBank Logo"
-          className="login-logo"
-        />
-
-        {/* GLASS CARD */}
         <div className="login-glass-card">
-
-          {/* HEADING */}
           <div className="login-heading">
             <h1 className="login-title">
               WELCOME <span className="reg-main-title-accent">BACK!</span>
@@ -101,14 +98,12 @@ export default function Login() {
             <p className="login-subtitle">Please enter your details</p>
           </div>
 
-          {/* GENERAL ERROR */}
           {errors.general && (
             <div className="error-summary" style={{ marginBottom: "4px" }}>
               <p className="error-summary-title" style={{ margin: 0 }}>⚠️ {errors.general}</p>
             </div>
           )}
 
-          {/* EMAIL FIELD */}
           <div className="login-field">
             <label className="reg-label">Email</label>
             <div className="reg-password-wrap">
@@ -125,7 +120,6 @@ export default function Login() {
             {errors.email && <p className="login-field-error">{errors.email}</p>}
           </div>
 
-          {/* PASSWORD FIELD */}
           <div className="login-field">
             <label className="reg-label">Password</label>
             <div className="reg-password-wrap">
@@ -148,7 +142,6 @@ export default function Login() {
             {errors.password && <p className="login-field-error">{errors.password}</p>}
           </div>
 
-          {/* REMEMBER ME + FORGOT PASSWORD */}
           <div className="login-row-meta">
             <label className="login-remember">
               <input
@@ -160,30 +153,19 @@ export default function Login() {
               />
               <span>Remember me</span>
             </label>
-            <a href="/forgot-password" className="login-forgot">
-              Forgot Password?
-            </a>
+            <a href="/forgot-password" className="login-forgot">Forgot Password?</a>
           </div>
 
-          {/* LOGIN BUTTON */}
           <div style={{ textAlign: "center", marginTop: "8px" }}>
-            <button
-              onClick={handleSubmit}
-              className="reg-submit-btn"
-              disabled={loading}
-            >
+            <button onClick={handleSubmit} className="reg-submit-btn" disabled={loading}>
               {loading ? "Logging in..." : "Log In"}
             </button>
           </div>
 
-          {/* REGISTER LINK */}
           <p className="login-register-link">
             Don't have an account?{" "}
-            <a href="/register" className="login-register-anchor">
-              Register here
-            </a>
+            <a href="/register" className="login-register-anchor">Register here</a>
           </p>
-
         </div>
       </div>
     </div>
