@@ -35,8 +35,7 @@ const EMPTY_FINANCIAL = {
 };
 
 const FOOD_TYPES = [
-  "Rice", "Flour", "Corn", "Beans", "Canned Goods",
-  "Vegetables", "Fruits", "Cooking Oil", "Noodles", "Others",
+  "Canned Goods", "Dry Goods", "Fresh Produce", "Dairy Products", "Meats & Fish", "Any Meals"
 ];
 
 const UNITS = ["kg", "g", "lbs", "pcs", "cans", "bags", "liters", "boxes"];
