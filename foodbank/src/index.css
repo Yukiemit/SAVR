@@ -5722,6 +5722,735 @@ body {
     }
   }
 
+  /* /-/-/-/-/-/-/-/ DONOR : DONATE FOOD /-/-/-/-/-/-/-/ */
+
+  /* ── WRAPPER & MAIN ── */
+  .don-food-wrapper {
+    min-height: 100vh;
+    background: #f9f9f7;
+    font-family: system-ui, -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .don-food-main {
+    flex: 1;
+    padding: 40px 60px 60px;
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
+  }
+
+  /* ── PAGE HEADER ── */
+  .don-food-page-header {
+    width: 100%;
+    margin-bottom: 28px;
+    text-align: center;
+  }
+
+  .don-food-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+
+  .don-food-title-icon {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+  }
+
+  .don-food-page-title {
+    font-size: 48px;
+    font-weight: 900;
+    color: #222;
+    margin: 0;
+    letter-spacing: 1px;
+  }
+
+  .don-food-page-divider {
+    border: none;
+    border-top: 2px solid #e0e0e0;
+    margin: 0;
+  }
+
+  /* ── BODY: two-column layout ── */
+  .don-food-body {
+    display: flex;
+    gap: 28px;
+    align-items: flex-start;
+    margin-top: 28px;
+  }
+
+  /* ── LEFT COLUMN ── */
+  .don-food-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── SECTION HEADER ── */
+  .don-food-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .don-food-section-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #222;
+    margin: 0;
+  }
+
+  /* ── ADD MORE BUTTON ── */
+  .don-food-add-btn {
+    background: white;
+    color: #333;
+    border: 1.5px solid #bbb;
+    border-radius: 20px;
+    padding: 8px 22px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  .don-food-add-btn:hover {
+    border-color: #c96a2e;
+    color: #c96a2e;
+  }
+
+  /* ── ITEMS LIST ── */
+  .don-food-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ── ITEM CARD — matches don-svc-card golden style exactly ── */
+  .don-food-item-card {
+    background: linear-gradient(145deg, #f4b942, #e8a830);
+    border-radius: 24px;
+    padding: 22px 28px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow:
+      0 12px 40px rgba(244, 185, 66, 0.30),
+      0 4px 16px rgba(0, 0, 0, 0.08);
+    box-sizing: border-box;
+  }
+
+  /* ── CARD HEADER ── */
+  .don-food-item-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .don-food-item-card-num {
+    font-size: 12px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.80);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .don-food-item-remove {
+    background: rgba(255, 255, 255, 0.20);
+    border: none;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.85);
+    display: flex;
+    align-items: center;
+    padding: 3px;
+    border-radius: 6px;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .don-food-item-remove:hover {
+    background: rgba(200, 0, 0, 0.35);
+    color: white;
+  }
+
+  .don-food-item-remove .material-symbols-rounded {
+    font-size: 18px;
+  }
+
+  /* ── ITEM ROW ── */
+  .don-food-item-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .don-food-item-row2 {
+    align-items: flex-end;
+  }
+
+  /* ── ITEM FIELD ── */
+  .don-food-item-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .don-food-item-field-name  { flex: 3;   min-width: 160px; }
+  .don-food-item-field-qty   { flex: 0 0 80px;  min-width: unset; }
+  .don-food-item-field-unit  { flex: 0 0 80px;  min-width: unset; }
+  .don-food-item-field-cat   { flex: 2;   min-width: 130px; }
+  .don-food-item-field-exp   { flex: 1.5; min-width: 120px; }
+  .don-food-item-field-notes { flex: 3;   min-width: 160px; }
+  .don-food-item-field-photo { flex: 1;   min-width: 110px; }
+
+  /* ── ITEM LABEL — matches don-svc-label ── */
+  .don-food-item-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.95);
+    letter-spacing: 0.3px;
+  }
+
+  .don-food-item-label-opt {
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.70);
+    font-size: 12px;
+  }
+
+  /* ── INPUT — matches don-svc-input exactly ── */
+  .don-food-input,
+  .don-food-item-select {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.30);
+    border: 1.5px solid rgba(255, 255, 255, 0.55);
+    border-radius: 10px;
+    outline: none;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    color: white;
+    box-sizing: border-box;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .don-food-input::placeholder {
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  .don-food-input:focus,
+  .don-food-item-select:focus {
+    border-color: white;
+    background: rgba(255, 255, 255, 0.42);
+  }
+
+  /* ── Error state — matches don-svc-input-err ── */
+  .don-food-input-err {
+    border-color: #ff6b6b !important;
+    background: rgba(255, 100, 100, 0.15) !important;
+  }
+
+  /* ── SELECT — matches don-svc-select ── */
+  .don-food-item-select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='rgba(255,255,255,0.85)' d='M5 6L0 0h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-color: rgba(255, 255, 255, 0.30);
+    padding-right: 32px;
+  }
+
+  .don-food-item-select option {
+    color: #333;
+    background: white;
+  }
+
+  /* ── ITEM ERROR — matches don-svc-err ── */
+  .don-food-item-err {
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff0f0;
+    background: rgba(200, 0, 0, 0.25);
+    border-radius: 6px;
+    padding: 2px 8px;
+    display: inline-block;
+  }
+
+  /* ── PHOTO UPLOAD BOX ── */
+  .don-food-photo-box {
+    width: 100%;
+    min-height: 80px;
+    border: 1.5px dashed rgba(255, 255, 255, 0.60);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  .don-food-photo-box:hover {
+    border-color: white;
+    background: rgba(255, 255, 255, 0.28);
+  }
+
+  .don-food-photo-has-file {
+    border-style: solid;
+    border-color: white;
+  }
+
+  .don-food-photo-icon {
+    font-size: 22px;
+    color: rgba(255, 255, 255, 0.80);
+  }
+
+  .don-food-photo-text {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.80);
+    font-weight: 700;
+  }
+
+  .don-food-photo-preview {
+    width: 100%;
+    height: 80px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .don-food-photo-remove {
+    background: none;
+    border: none;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    padding: 2px 0;
+    font-family: inherit;
+    margin-top: 2px;
+    transition: color 0.2s;
+  }
+
+  .don-food-photo-remove:hover {
+    color: #fff0f0;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     RIGHT COLUMN — Schedule card (GREEN)
+  ═══════════════════════════════════════════════════════ */
+  .don-food-right {
+    width: 360px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 80px;
+  }
+
+  /* ── SCHEDULE CARD — green gradient ── */
+  .don-food-sched-card {
+    background: linear-gradient(145deg, #2e7d32, #1b5e20);
+    border-radius: 24px;
+    padding: 24px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    box-shadow:
+      0 12px 40px rgba(46, 125, 50, 0.30),
+      0 4px 16px rgba(0, 0, 0, 0.10);
+  }
+
+  .don-food-sched-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: white;
+    margin: 0;
+    letter-spacing: 0.3px;
+  }
+
+  /* ── MODE TOGGLE ── */
+  .don-food-mode-toggle {
+    display: flex;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .don-food-mode-btn {
+    flex: 1;
+    padding: 10px 0;
+    font-size: 13px;
+    font-weight: 800;
+    font-family: inherit;
+    border: none;
+    background: rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    letter-spacing: 1px;
+  }
+
+  .don-food-mode-btn:first-child { border-radius: 10px 0 0 10px; }
+  .don-food-mode-btn:last-child  { border-radius: 0 10px 10px 0; }
+
+  .don-food-mode-active {
+    background: #f4b942 !important;
+    color: #222 !important;
+  }
+
+  /* ── SCHEDULE FIELD ── */
+  .don-food-sched-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  /* ── SCHEDULE LABEL — matches don-svc-label ── */
+  .don-food-sched-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.95);
+    letter-spacing: 0.3px;
+  }
+
+  /* ── ADDRESS INPUT WITH ICON ── */
+  .don-food-addr-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .don-food-addr-icon {
+    position: absolute;
+    left: 10px;
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.80);
+    pointer-events: none;
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+
+  .don-food-addr-input {
+    width: 100%;
+    padding: 10px 14px 10px 34px;
+    background: rgba(255, 255, 255, 0.20);
+    border: 1.5px solid rgba(255, 255, 255, 0.45);
+    border-radius: 10px;
+    outline: none;
+    font-size: 13px;
+    font-family: inherit;
+    color: white;
+    box-sizing: border-box;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .don-food-addr-input::placeholder { color: rgba(255, 255, 255, 0.50); }
+
+  .don-food-addr-input:focus {
+    border-color: white;
+    background: rgba(255, 255, 255, 0.30);
+  }
+
+  /* ── WAREHOUSE ADDRESS ROW ── */
+  .don-food-warehouse-addr-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
+
+  .don-food-warehouse-icon {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.85);
+    flex-shrink: 0;
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+
+  .don-food-warehouse-addr {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  /* ── SCHEDULE INPUTS — matches don-svc-input on green bg ── */
+  .don-food-sched-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.20);
+    border: 1.5px solid rgba(255, 255, 255, 0.45);
+    border-radius: 10px;
+    outline: none;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    color: white;
+    box-sizing: border-box;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .don-food-sched-input:focus {
+    border-color: white;
+    background: rgba(255, 255, 255, 0.30);
+  }
+
+  .don-food-sched-input::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+  }
+
+  .don-food-sched-input-err {
+    border-color: #ff6b6b !important;
+    background: rgba(255, 100, 100, 0.15) !important;
+  }
+
+  /* ── SCHEDULE ERROR ── */
+  .don-food-sched-err {
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff0f0;
+    background: rgba(200, 0, 0, 0.25);
+    border-radius: 6px;
+    padding: 2px 8px;
+    display: inline-block;
+  }
+
+  /* ── MAP PLACEHOLDER ────────────────────────────────────────────────────
+     Replace with: <div ref={mapContainer} className="don-food-map" />
+     once Mapbox is ready. Keep height at 200px.
+  ──────────────────────────────────────────────────────────────────────── */
+  .don-food-map-placeholder {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1.5px solid rgba(255, 255, 255, 0.25);
+    background: #b8d4b8;
+  }
+
+  .don-food-map-placeholder-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    opacity: 0.65;
+  }
+
+  .don-food-map-placeholder-badge {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.93);
+    border-radius: 20px;
+    padding: 6px 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #555;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.14);
+  }
+
+  .don-food-map-placeholder-badge .material-symbols-rounded {
+    font-size: 16px;
+    color: #2e7d32;
+  }
+
+  .don-food-map-pin {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 10px;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.14);
+  }
+
+  .don-food-map-pin-icon {
+    font-size: 16px;
+    color: #c96a2e;
+    flex-shrink: 0;
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+
+  .don-food-map-pin-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── REAL MAPBOX CONTAINER ── */
+  .don-food-map {
+    width: 100%;
+    height: 200px;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* ── DATE + TIME ROW ── */
+  .don-food-sched-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .don-food-sched-field-half {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* ── TIME SLOT ── */
+  .don-food-timeslot-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .don-food-time-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .don-food-time-sep {
+    color: rgba(255, 255, 255, 0.70);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* ── STATUS MESSAGES ── */
+  .don-food-status {
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    margin: 16px 0 0;
+  }
+
+  .don-food-status-success { color: #2e7d32; }
+  .don-food-status-error   { color: #e74c3c; }
+
+  /* ── SUBMIT ROW ── */
+  .don-food-submit-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 28px;
+  }
+
+  /* ── CANCEL BUTTON — matches don-svc-cancel-btn ── */
+  .don-food-cancel-btn {
+    background: white;
+    color: #888;
+    border: 1.5px solid #ddd;
+    border-radius: 30px;
+    padding: 13px 28px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  .don-food-cancel-btn:hover {
+    border-color: #aaa;
+    color: #555;
+  }
+
+  /* ── SUBMIT BUTTON — matches don-svc-submit-btn ── */
+  .don-food-submit-btn {
+    background: #2e7d32;
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: inherit;
+    border: none;
+    border-radius: 30px;
+    padding: 13px 56px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 16px rgba(46, 125, 50, 0.35);
+    letter-spacing: 1px;
+  }
+
+  .don-food-submit-btn:hover:not(:disabled) {
+    background: #1b5e20;
+    transform: scale(1.03);
+    box-shadow: 0 8px 24px rgba(46, 125, 50, 0.45);
+  }
+
+  .don-food-submit-btn:disabled {
+    background: #aaa;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 1000px) {
+    .don-food-body {
+      flex-direction: column;
+    }
+
+    .don-food-right {
+      width: 100%;
+      position: static;
+    }
+
+    .don-food-main {
+      padding: 24px 20px 40px;
+    }
+  }
+
+  @media (max-width: 680px) {
+    .don-food-page-title  { font-size: 32px; }
+    .don-food-title-icon  { width: 40px; height: 40px; }
+    .don-food-item-card   { padding: 18px 16px; }
+
+    .don-food-item-row {
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .don-food-item-field-name,
+    .don-food-item-field-qty,
+    .don-food-item-field-unit,
+    .don-food-item-field-cat,
+    .don-food-item-field-exp  { flex: 1; min-width: unset; }
+
+    .don-food-sched-row { flex-direction: column; }
+
+    .don-food-submit-row {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+
+    .don-food-cancel-btn,
+    .don-food-submit-btn { width: 100%; text-align: center; }
+  }
+
+
 
 /* /-/-/-/-/-/-/-/ BENEFICIARY PAGE /-/-/-/-/-/-/-/ */
 

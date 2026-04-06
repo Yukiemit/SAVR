@@ -21,6 +21,7 @@ import DonorDashboard from "./pages/Donor/Donor_Dashboard";
 import DonorDonate from "./pages/Donor/Donor_Donate";
 import DonorDonateService from "./pages/Donor/Donor_Donate_Service";
 import DonorDonateFinancial from "./pages/Donor/Donor_Donate_Financial";
+import DonorDonateFood from "./pages/Donor/Donor_Donate_Food";
 
 
 import AdminDashboard from "./pages/Admin/Admin_Dashboard";
@@ -62,6 +63,8 @@ function App() {
         <Route path="/donor/donate" element={<DonorDonate />} />
         <Route path="/donor/donate/service" element={<DonorDonateService />} />
         <Route path="/donor/donate/financial" element={<DonorDonateFinancial />} />
+        <Route path="/donor/donate/food" element={<DonorDonateFood />} />
+        
 
         {/* ── ADMIN ── */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
