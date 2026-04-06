@@ -35,7 +35,7 @@ const EMPTY_FINANCIAL = {
 };
 
 const FOOD_TYPES = [
-  "Canned Goods", "Dry Goods", "Fresh Produce", "Dairy Products", "Meat & Fish", "Any Meals"
+  "Canned Goods", "Dry Goods", "Fresh Produce", "Dairy Products", "Meats & Fish", "Any Meals"
 ];
 
 const UNITS = ["kg", "g", "lbs", "pcs", "cans", "bags", "liters", "boxes"];
