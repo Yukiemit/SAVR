@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import NavBar_Donor from "../../components/NavBar_Donor";
 import api from "../../services/api";
 
-// ── BADGE DEFINITIONS ────────────────────────────────────────────────────────
 const FINANCIAL_BADGES = [
   { key: "kind_hearted",         label: "Kind Hearted",         threshold: 5000,    icon: "/images/badge_kind_hearted.png" },
   { key: "helping_hand",         label: "Helping Hand",         threshold: 10000,   icon: "/images/badge_helping_hand.png" },
@@ -21,15 +20,8 @@ const COUNT_BADGES = [
   { key: "food_angel",          label: "Food Angel",          threshold: 20, icon: "/images/badge_food_angel.png" },
 ];
 
-const DUMMY_DONOR = {
-  name: "Juan Dela Cruz",
-  badges: ["kind_hearted", "pantry_pal"],
-};
-const DUMMY_STATS = {
-  total_financial:  30000,
-  total_food_count: 50,
-  total_count:      7,
-};
+const DUMMY_STATS = { total_financial: 30000, total_food_count: 50, total_count: 7 };
+
 const DUMMY_DONATIONS = [
   { id: 1, date: "Jan 15, 2025", type: "Financial", amount_items: "₱ 5,000",    status: "Completed" },
   { id: 2, date: "Jan 15, 2025", type: "Food",      amount_items: "10 kg Rice", status: "Completed" },
@@ -44,13 +36,11 @@ const formatPeso = (v) => `₱ ${Number(v).toLocaleString()}`;
 
 const getCurrentRange = (total) => {
   const boundaries = [0, ...FINANCIAL_BADGES.map(b => b.threshold)];
-  if (total >= boundaries[boundaries.length - 1]) {
+  if (total >= boundaries[boundaries.length - 1])
     return { min: boundaries[boundaries.length - 2], max: boundaries[boundaries.length - 1] };
-  }
   for (let i = 0; i < boundaries.length - 1; i++) {
-    if (total >= boundaries[i] && total < boundaries[i + 1]) {
+    if (total >= boundaries[i] && total < boundaries[i + 1])
       return { min: boundaries[i], max: boundaries[i + 1] };
-    }
   }
   return { min: 0, max: 5000 };
 };
@@ -66,37 +56,35 @@ export default function Donor_Dashboard() {
   const [totalFoodCount, setTotalFoodCount] = useState(0);
   const [donationCount,  setDonationCount]  = useState(0);
   const [loading,        setLoading]        = useState(true);
+  const [filterType,     setFilterType]     = useState("All");
+  const [filterRange,    setFilterRange]    = useState("all_time");
+  const [customFrom,     setCustomFrom]     = useState("");
+  const [customTo,       setCustomTo]       = useState("");
+  const [donations,      setDonations]      = useState([]);
+  const [reportLoading,  setReportLoading]  = useState(false);
+  const [exportLoading,  setExportLoading]  = useState(false);
+  const [newBadge,       setNewBadge]       = useState(null);
+  const prevFinancialRef                    = useRef(0);
+  const prevCountRef                        = useRef(0);
 
-  const [filterType,    setFilterType]    = useState("All");
-  const [filterRange,   setFilterRange]   = useState("all_time");
-  const [customFrom,    setCustomFrom]    = useState("");
-  const [customTo,      setCustomTo]      = useState("");
-  const [donations,     setDonations]     = useState([]);
-  const [reportLoading, setReportLoading] = useState(false);
-  const [exportLoading, setExportLoading] = useState(false);
-
-  const [newBadge, setNewBadge]    = useState(null);
-  const prevFinancialRef           = useRef(0);
-  const prevCountRef               = useRef(0);
-
-  // ── Initial fetch ──────────────────────────────────────────────────────────
   useEffect(() => {
     const init = async () => {
+      // ✅ READ NAME FROM localStorage
+      const user = JSON.parse(localStorage.getItem("user"));
+      setDonor({ name: user?.name || "—", badges: [] });
+
       try {
-        const [profileRes, statsRes, donationsRes] = await Promise.all([
-          api.get("/donor/profile"),
+        const [statsRes, donationsRes] = await Promise.all([
           api.get("/donor/stats"),
           api.get("/donor/donations"),
         ]);
-        setDonor(profileRes.data                                      || DUMMY_DONOR);
-        setTotalFinancial(statsRes.data.total_financial               ?? DUMMY_STATS.total_financial);
-        setTotalFoodCount(statsRes.data.total_food_count              ?? DUMMY_STATS.total_food_count);
-        setDonationCount(statsRes.data.total_count                    ?? DUMMY_STATS.total_count);
-        setDonations(donationsRes.data                                || DUMMY_DONATIONS);
-        prevFinancialRef.current = statsRes.data.total_financial      ?? DUMMY_STATS.total_financial;
-        prevCountRef.current     = statsRes.data.total_count          ?? DUMMY_STATS.total_count;
+        setTotalFinancial(statsRes.data.total_financial  ?? DUMMY_STATS.total_financial);
+        setTotalFoodCount(statsRes.data.total_food_count ?? DUMMY_STATS.total_food_count);
+        setDonationCount(statsRes.data.total_count       ?? DUMMY_STATS.total_count);
+        setDonations(donationsRes.data                   || DUMMY_DONATIONS);
+        prevFinancialRef.current = statsRes.data.total_financial ?? DUMMY_STATS.total_financial;
+        prevCountRef.current     = statsRes.data.total_count     ?? DUMMY_STATS.total_count;
       } catch {
-        setDonor(DUMMY_DONOR);
         setTotalFinancial(DUMMY_STATS.total_financial);
         setTotalFoodCount(DUMMY_STATS.total_food_count);
         setDonationCount(DUMMY_STATS.total_count);
@@ -110,50 +98,21 @@ export default function Donor_Dashboard() {
     init();
   }, []);
 
-  // ── Badge pop-up trigger ───────────────────────────────────────────────────
-  const checkNewBadges = (newTotal, newCount) => {
-    for (const badge of FINANCIAL_BADGES) {
-      if (prevFinancialRef.current < badge.threshold && newTotal >= badge.threshold) {
-        setNewBadge(badge); setTimeout(() => setNewBadge(null), 5000); break;
-      }
-    }
-    for (const badge of COUNT_BADGES) {
-      if (prevCountRef.current < badge.threshold && newCount >= badge.threshold) {
-        setNewBadge(badge); setTimeout(() => setNewBadge(null), 5000); break;
-      }
-    }
-    prevFinancialRef.current = newTotal;
-    prevCountRef.current     = newCount;
-  };
-
-  // ── Apply report filters ───────────────────────────────────────────────────
   const handleApplyFilters = async () => {
     setReportLoading(true);
     try {
-      const params = {
-        type:  filterType,
-        range: filterRange,
-        ...(filterRange === "custom" && { from: customFrom, to: customTo }),
-      };
+      const params = { type: filterType, range: filterRange, ...(filterRange === "custom" && { from: customFrom, to: customTo }) };
       const res = await api.get("/donor/donations", { params });
       setDonations(res.data || DUMMY_DONATIONS);
-    } catch {
-      setDonations(DUMMY_DONATIONS);
-    } finally {
-      setReportLoading(false);
-    }
+    } catch { setDonations(DUMMY_DONATIONS); }
+    finally { setReportLoading(false); }
   };
 
-  // ── Export PDF ─────────────────────────────────────────────────────────────
   const handleExportPDF = async () => {
     setExportLoading(true);
     try {
-      const params = {
-        type:  filterType,
-        range: filterRange,
-        ...(filterRange === "custom" && { from: customFrom, to: customTo }),
-      };
-      const res = await api.get("/donor/donations/export-pdf", { params, responseType: "blob" });
+      const params = { type: filterType, range: filterRange, ...(filterRange === "custom" && { from: customFrom, to: customTo }) };
+      const res  = await api.get("/donor/donations/export-pdf", { params, responseType: "blob" });
       const url  = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
       const link = document.createElement("a");
       link.href  = url;
@@ -162,27 +121,21 @@ export default function Donor_Dashboard() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Export error:", err);
-    } finally {
-      setExportLoading(false);
-    }
+    } catch (err) { console.error("Export error:", err); }
+    finally { setExportLoading(false); }
   };
 
-  // ── Derived values ─────────────────────────────────────────────────────────
   const earnedFinancial = FINANCIAL_BADGES.filter(b => totalFinancial >= b.threshold);
   const earnedCount     = COUNT_BADGES.filter(b => donationCount >= b.threshold);
   const earnedBadges    = [...earnedFinancial, ...earnedCount];
-
-  const { min, max } = getCurrentRange(totalFinancial);
-  const fillPct       = max > min ? Math.min(((totalFinancial - min) / (max - min)) * 100, 100) : 100;
-  const remaining     = Math.max(max - totalFinancial, 0);
-  const nextBadge     = FINANCIAL_BADGES.find(b => b.threshold === max);
+  const { min, max }    = getCurrentRange(totalFinancial);
+  const fillPct         = max > min ? Math.min(((totalFinancial - min) / (max - min)) * 100, 100) : 100;
+  const remaining       = Math.max(max - totalFinancial, 0);
+  const nextBadge       = FINANCIAL_BADGES.find(b => b.threshold === max);
 
   return (
     <div className="dd-wrapper">
 
-      {/* ── BADGE POP-UP ── */}
       {newBadge && (
         <div className="dd-badge-popup">
           <div className="dd-badge-popup-inner">
@@ -193,100 +146,56 @@ export default function Donor_Dashboard() {
         </div>
       )}
 
-      {/* ── NAVBAR ── */}
       <NavBar_Donor />
 
-      {/* ── MAIN CONTENT (no sidebar) ── */}
       <main className="sd-main">
 
-        {/* ── WELCOME BANNER ── */}
+        {/* WELCOME BANNER */}
         <div className="sd-banner" style={{ marginBottom: 28 }}>
           <img src="/images/background.png" alt="" className="sd-banner-bg" />
           <div className="sd-banner-overlay" />
           <div className="sd-banner-content" style={{ flex: 1 }}>
             <p className="sd-banner-greeting">Good day!</p>
             <h1 className="sd-banner-name">{loading ? "—" : donor.name}</h1>
-            <p className="sd-banner-sub">
-              Here's your donor dashboard — keep making an impact!
-            </p>
+            <p className="sd-banner-sub">Here's your donor dashboard — keep making an impact!</p>
           </div>
-
-          {/* Achievement Badges — right side of banner */}
-          <div style={{
-            position: "relative", zIndex: 2, marginRight: 40,
-            display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end",
-          }}>
-            <p style={{
-              color: "rgba(255,255,255,0.8)", fontSize: 12,
-              fontWeight: 700, letterSpacing: 1, margin: "0 0 4px", textAlign: "right",
-            }}>
+          <div style={{ position: "relative", zIndex: 2, marginRight: 40, display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
+            <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 700, letterSpacing: 1, margin: "0 0 4px", textAlign: "right" }}>
               Achievement Badges
             </p>
             {earnedBadges.length === 0 ? (
-              <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 12, fontStyle: "italic" }}>
-                No badges yet
-              </p>
+              <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 12, fontStyle: "italic" }}>No badges yet</p>
             ) : (
               earnedBadges.slice(0, 3).map(badge => (
-                <div key={badge.key} style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  background: "rgba(255,255,255,0.15)",
-                  backdropFilter: "blur(12px)",
-                  border: "1px solid rgba(255,255,255,0.30)",
-                  borderRadius: 30, padding: "8px 18px 8px 10px", minWidth: 200,
-                }}>
-                  <img
-                    src={badge.icon}
-                    alt={badge.label}
-                    style={{ width: 32, height: 32, objectFit: "contain", borderRadius: "50%" }}
-                  />
-                  <span style={{ color: "white", fontSize: 13, fontWeight: 700 }}>
-                    {badge.label}
-                  </span>
+                <div key={badge.key} style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.15)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.30)", borderRadius: 30, padding: "8px 18px 8px 10px", minWidth: 200 }}>
+                  <img src={badge.icon} alt={badge.label} style={{ width: 32, height: 32, objectFit: "contain", borderRadius: "50%" }} />
+                  <span style={{ color: "white", fontSize: 13, fontWeight: 700 }}>{badge.label}</span>
                 </div>
               ))
             )}
           </div>
         </div>
 
-        {/* ── STAT CARDS ROW ── */}
+        {/* STAT CARDS */}
         <div style={{ display: "flex", gap: 24, marginBottom: 28 }}>
-
-          {/* TOTAL FINANCIAL DONATION */}
           <div className="sd-glass-card" style={{ flex: 1 }}>
-            <img
-              src="/images/Donor_Financial.png"
-              alt="Financial Donation"
-              className="sd-glass-card-icon"
-            />
+            <img src="/images/Donor_Financial.png" alt="Financial Donation" className="sd-glass-card-icon" />
             <div className="sd-glass-card-info">
-              <p className="sd-glass-card-value">
-                {loading ? "—" : `₱ ${Number(totalFinancial).toLocaleString()}`}
-              </p>
+              <p className="sd-glass-card-value">{loading ? "—" : `₱ ${Number(totalFinancial).toLocaleString()}`}</p>
               <p className="sd-glass-card-label">Total Financial<br />Donation</p>
             </div>
           </div>
-
-          {/* TOTAL FOOD DONATION */}
           <div className="sd-glass-card" style={{ flex: 1 }}>
-            <img
-              src="/images/Donor_Food.png"
-              alt="Food Donation"
-              className="sd-glass-card-icon"
-            />
+            <img src="/images/Donor_Food.png" alt="Food Donation" className="sd-glass-card-icon" />
             <div className="sd-glass-card-info">
-              <p className="sd-glass-card-value">
-                {loading ? "—" : totalFoodCount}
-              </p>
+              <p className="sd-glass-card-value">{loading ? "—" : totalFoodCount}</p>
               <p className="sd-glass-card-label">Total Food<br />Donation</p>
             </div>
           </div>
         </div>
 
-        {/* ── TOTAL DONATIONS SCALE + PERCENTAGE ROW ── */}
+        {/* PROGRESS + PERCENTAGE */}
         <div style={{ display: "flex", gap: 24, marginBottom: 28 }}>
-
-          {/* Progress bar card */}
           <div className="dd-scale-card" style={{ flex: 2 }}>
             <div className="dd-scale-header">
               <span className="material-symbols-rounded dd-scale-icon">payments</span>
@@ -300,31 +209,19 @@ export default function Donor_Dashboard() {
               <span className="dd-scale-range-min">{formatPeso(min)}</span>
               <span className="dd-scale-range-max">
                 {formatPeso(max)}
-                {nextBadge && (
-                  <span className="dd-scale-range-badge-hint"> · {nextBadge.label}</span>
-                )}
+                {nextBadge && <span className="dd-scale-range-badge-hint"> · {nextBadge.label}</span>}
               </span>
             </div>
           </div>
-
-          {/* Percentage remaining card */}
-          <div className="dd-scale-card" style={{
-            flex: 1, display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center", gap: 6,
-          }}>
-            <p style={{
-              fontSize: 52, fontWeight: 900, color: "#c96a2e",
-              margin: 0, lineHeight: 1,
-            }}>
+          <div className="dd-scale-card" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <p style={{ fontSize: 52, fontWeight: 900, color: "#c96a2e", margin: 0, lineHeight: 1 }}>
               {max > 0 ? `${Math.round(fillPct)}%` : "100%"}
             </p>
-            <p style={{ fontSize: 13, color: "#888", margin: 0 }}>
-              {formatPeso(remaining)} remaining
-            </p>
+            <p style={{ fontSize: 13, color: "#888", margin: 0 }}>{formatPeso(remaining)} remaining</p>
           </div>
         </div>
 
-        {/* ── DONATE NOW BUTTON ── */}
+        {/* DONATE NOW */}
         <button className="dd-donate-btn" onClick={() => navigate("/donor/donate")}>
           <span className="material-symbols-rounded dd-donate-icon">volunteer_activism</span>
           DONATE NOW
@@ -332,41 +229,19 @@ export default function Donor_Dashboard() {
 
         <hr className="dd-divider" />
 
-        {/* ── RECENT DONATION ACTIVITY ── */}
+        {/* RECENT ACTIVITY */}
         <div className="dd-table-header-row" style={{ justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              className="material-symbols-rounded dd-table-icon"
-              style={{ fontVariationSettings: "'FILL' 1, 'wght' 400" }}
-            >
-              receipt_long
-            </span>
+            <span className="material-symbols-rounded dd-table-icon" style={{ fontVariationSettings: "'FILL' 1, 'wght' 400" }}>receipt_long</span>
             <h3 className="dd-table-title">Recent Donation Activity</h3>
           </div>
-          <button
-            onClick={() => navigate("/donor/reports")}
-            style={{
-              background: "#c96a2e", color: "white", border: "none",
-              borderRadius: 20, padding: "8px 22px", fontSize: 13,
-              fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
-              boxShadow: "0 3px 10px rgba(201,106,46,0.30)",
-              transition: "background 0.2s",
-            }}
-          >
+          <button onClick={() => navigate("/donor/reports")} style={{ background: "#c96a2e", color: "white", border: "none", borderRadius: 20, padding: "8px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             See All
           </button>
         </div>
-
         <div className="dd-table-wrap" style={{ marginBottom: 28 }}>
           <table className="dd-table">
-            <thead>
-              <tr>
-                <th>DATE</th>
-                <th>TYPE</th>
-                <th>AMOUNT/ITEMS</th>
-                <th>STATUS</th>
-              </tr>
-            </thead>
+            <thead><tr><th>DATE</th><th>TYPE</th><th>AMOUNT/ITEMS</th><th>STATUS</th></tr></thead>
             <tbody>
               {loading ? (
                 <tr><td colSpan={4} className="dd-table-loading">Loading…</td></tr>
@@ -375,17 +250,9 @@ export default function Donor_Dashboard() {
               ) : (
                 donations.slice(0, 5).map((d) => (
                   <tr key={d.id}>
-                    <td>{d.date}</td>
-                    <td>{d.type}</td>
-                    <td>{d.amount_items}</td>
+                    <td>{d.date}</td><td>{d.type}</td><td>{d.amount_items}</td>
                     <td>
-                      <span style={{
-                        display: "inline-flex", alignItems: "center", gap: 5,
-                        background: statusColor(d.status) + "18",
-                        color: statusColor(d.status),
-                        fontWeight: 700, fontSize: 12,
-                        padding: "5px 14px", borderRadius: 20,
-                      }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: statusColor(d.status) + "18", color: statusColor(d.status), fontWeight: 700, fontSize: 12, padding: "5px 14px", borderRadius: 20 }}>
                         ✓ {d.status}
                       </span>
                     </td>
@@ -398,45 +265,29 @@ export default function Donor_Dashboard() {
 
         <hr className="dd-divider" />
 
-        {/* ── REPORTS & ANALYTICS ── */}
+        {/* REPORTS & ANALYTICS */}
         <h2 className="dd-section-heading">Reports &amp; Analytics</h2>
-
-        {/* FILTER CARD */}
         <div className="dd-filter-card">
           <div className="dd-filter-header">
             <span className="material-symbols-rounded dd-filter-icon">filter_alt</span>
             <span className="dd-filter-title">Reports Filters</span>
-            <button
-              className="dd-filter-btn"
-              onClick={handleApplyFilters}
-              disabled={reportLoading}
-            >
+            <button className="dd-filter-btn" onClick={handleApplyFilters} disabled={reportLoading}>
               {reportLoading ? "Loading…" : "Apply Filters"}
             </button>
           </div>
-
           <div className="dd-filter-row">
             <div className="dd-filter-group">
               <label className="dd-filter-label">Type</label>
-              <select
-                className="dd-filter-select"
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-              >
+              <select className="dd-filter-select" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
                 <option value="All">All</option>
                 <option value="Food Donation">Food Donation</option>
                 <option value="Financial Donation">Financial Donation</option>
                 <option value="Service Donation">Service Donation</option>
               </select>
             </div>
-
             <div className="dd-filter-group">
               <label className="dd-filter-label">Date Range</label>
-              <select
-                className="dd-filter-select"
-                value={filterRange}
-                onChange={(e) => setFilterRange(e.target.value)}
-              >
+              <select className="dd-filter-select" value={filterRange} onChange={(e) => setFilterRange(e.target.value)}>
                 <option value="all_time">All Time</option>
                 <option value="today">Today</option>
                 <option value="this_week">This Week</option>
@@ -445,48 +296,28 @@ export default function Donor_Dashboard() {
                 <option value="custom">Custom Range</option>
               </select>
             </div>
-
             {filterRange === "custom" && (
               <>
                 <div className="dd-filter-group">
                   <label className="dd-filter-label">From</label>
-                  <input
-                    type="date"
-                    className="dd-filter-select"
-                    value={customFrom}
-                    onChange={(e) => setCustomFrom(e.target.value)}
-                  />
+                  <input type="date" className="dd-filter-select" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
                 </div>
                 <div className="dd-filter-group">
                   <label className="dd-filter-label">To</label>
-                  <input
-                    type="date"
-                    className="dd-filter-select"
-                    value={customTo}
-                    onChange={(e) => setCustomTo(e.target.value)}
-                  />
+                  <input type="date" className="dd-filter-select" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
                 </div>
               </>
             )}
           </div>
         </div>
 
-        {/* DONATIONS SUMMARY TABLE (filtered) */}
         <div className="dd-table-header-row">
           <span className="material-symbols-rounded dd-table-icon">description</span>
           <h3 className="dd-table-title">Donations Summary</h3>
         </div>
-
         <div className="dd-table-wrap">
           <table className="dd-table">
-            <thead>
-              <tr>
-                <th>DATE</th>
-                <th>TYPE</th>
-                <th>AMOUNT/ITEMS</th>
-                <th>STATUS</th>
-              </tr>
-            </thead>
+            <thead><tr><th>DATE</th><th>TYPE</th><th>AMOUNT/ITEMS</th><th>STATUS</th></tr></thead>
             <tbody>
               {reportLoading ? (
                 <tr><td colSpan={4} className="dd-table-loading">Loading…</td></tr>
@@ -495,17 +326,9 @@ export default function Donor_Dashboard() {
               ) : (
                 donations.map((d) => (
                   <tr key={d.id}>
-                    <td>{d.date}</td>
-                    <td>{d.type}</td>
-                    <td>{d.amount_items}</td>
+                    <td>{d.date}</td><td>{d.type}</td><td>{d.amount_items}</td>
                     <td>
-                      <span style={{
-                        display: "inline-flex", alignItems: "center", gap: 5,
-                        background: statusColor(d.status) + "18",
-                        color: statusColor(d.status),
-                        fontWeight: 700, fontSize: 12,
-                        padding: "5px 14px", borderRadius: 20,
-                      }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: statusColor(d.status) + "18", color: statusColor(d.status), fontWeight: 700, fontSize: 12, padding: "5px 14px", borderRadius: 20 }}>
                         ✓ {d.status}
                       </span>
                     </td>
@@ -516,20 +339,14 @@ export default function Donor_Dashboard() {
           </table>
         </div>
 
-        {/* EXPORT PDF */}
         <div className="dd-export-row">
-          <button
-            className="dd-export-btn"
-            onClick={handleExportPDF}
-            disabled={exportLoading}
-          >
+          <button className="dd-export-btn" onClick={handleExportPDF} disabled={exportLoading}>
             <span className="material-symbols-rounded">download</span>
             {exportLoading ? "Exporting…" : "Export Full Report (PDF)"}
           </button>
         </div>
 
       </main>
-
     </div>
   );
 }

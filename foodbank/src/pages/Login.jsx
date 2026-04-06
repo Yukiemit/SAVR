@@ -35,13 +35,17 @@ export default function Login() {
 
     try {
       const res = await api.post("/login", {
-        identifier: form.email,   // ✅ FIXED: was "email", Laravel expects "identifier"
+        identifier: form.email,
         password: form.password,
         remember: form.remember,
       });
 
-      const { token, role } = res.data;
+      const { token, role, user } = res.data;
+
+      // ✅ SAVE ALL THREE TO localStorage
       localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("role", role);
 
       if (role === "admin")             navigate("/admin/dashboard");
       else if (role === "staff")        navigate("/staff/dashboard");

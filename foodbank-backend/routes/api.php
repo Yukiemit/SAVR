@@ -13,6 +13,13 @@ Route::post('/forgot-password',   [AuthController::class, 'forgotPassword']);
 Route::post('/verify-reset-otp',  [AuthController::class, 'verifyResetOtp']);
 Route::post('/reset-password',    [AuthController::class, 'resetPassword']);
 
+// Protected routes (requires token)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/donor/profile', [DonorController::class, 'profile']);
+    // ... your other protected routes
+});
+
 // ── ADMIN ONLY ──
 Route::post('/admin/staff',       [AuthController::class, 'createStaff']);
 

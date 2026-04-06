@@ -4,8 +4,8 @@ import api from "../services/api";
 
 const navItems = [
   { label: "Dashboard", path: "/donor/dashboard" },
-  { label: "Donate",    path: "/donor/donate"           },
-  { label: "Report",    path: "/donor/reports"    },
+  { label: "Donate",    path: "/donor/donate"    },
+  { label: "Report",    path: "/donor/reports"   },
 ];
 
 const iconConfig = (type) => {
@@ -36,14 +36,10 @@ export default function NavBar_Donor() {
   const [notifLoading,  setNotifLoading]  = useState(false);
   const bellRef = useRef(null);
 
+  // ✅ READ NAME FROM localStorage
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await api.get("/donor/profile");
-        setDonorName(res.data.name);
-      } catch (_) {}
-    };
-    fetchProfile();
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (user?.name) setDonorName(user.name);
   }, []);
 
   const fetchNotifications = async () => {
@@ -64,9 +60,7 @@ export default function NavBar_Donor() {
 
   useEffect(() => {
     const handleOutside = (e) => {
-      if (bellRef.current && !bellRef.current.contains(e.target)) {
-        setBellOpen(false);
-      }
+      if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false);
     };
     if (bellOpen) document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
@@ -79,9 +73,7 @@ export default function NavBar_Donor() {
       try {
         await api.post("/notifications/mark-all-read");
         setUnreadCount(0);
-        setNotifications((prev) =>
-          prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() }))
-        );
+        setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
       } catch (_) {}
     }
   };
@@ -89,9 +81,7 @@ export default function NavBar_Donor() {
   const markRead = async (id) => {
     try {
       await api.post(`/notifications/${id}/mark-read`);
-      setNotifications((prev) =>
-        prev.map((n) => n.id === id ? { ...n, read_at: new Date().toISOString() } : n)
-      );
+      setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read_at: new Date().toISOString() } : n));
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (_) {}
   };
@@ -99,26 +89,23 @@ export default function NavBar_Donor() {
   const handleLogout = async () => {
     try { await api.post("/logout"); } catch (_) {}
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
     window.location.href = "/";
   };
 
   return (
     <nav className="user-navbar">
-
-      {/* LOGO */}
       <div className="user-navbar-logo">
         <img src="/images/logobrown.png" alt="FoodBank Logo" />
       </div>
 
-      {/* NAV ITEMS */}
       <ul className="user-nav-list">
         {navItems.map((item) => (
           <li key={item.label} className="user-nav-item">
             <NavLink
               to={item.path}
-              className={({ isActive }) =>
-                `user-nav-link ${isActive ? "user-nav-active" : ""}`
-              }
+              className={({ isActive }) => `user-nav-link ${isActive ? "user-nav-active" : ""}`}
             >
               {item.label}
             </NavLink>
@@ -126,10 +113,7 @@ export default function NavBar_Donor() {
         ))}
       </ul>
 
-      {/* RIGHT SIDE: BELL + USER */}
       <div className="user-navbar-right">
-
-        {/* NOTIFICATION BELL */}
         <div className="notif-bell-wrap" ref={bellRef}>
           <button
             className={`notif-bell-btn ${bellOpen ? "notif-bell-active" : ""}`}
@@ -140,22 +124,18 @@ export default function NavBar_Donor() {
               {unreadCount > 0 ? "notifications_active" : "notifications"}
             </span>
             {unreadCount > 0 && (
-              <span className="notif-bell-badge">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
+              <span className="notif-bell-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
             )}
           </button>
 
           {bellOpen && (
             <div className="notif-panel">
-
               <div className="notif-panel-header">
                 <h3 className="notif-panel-title">Notifications &amp; Recent Activities</h3>
                 {unreadCount === 0 && notifications.length > 0 && (
                   <span className="notif-panel-all-read">All caught up ✓</span>
                 )}
               </div>
-
               <ul className="notif-panel-list">
                 {notifLoading ? (
                   <li className="notif-panel-empty">Loading…</li>
@@ -172,14 +152,7 @@ export default function NavBar_Donor() {
                         onClick={() => unread && markRead(n.id)}
                       >
                         <div className="notif-panel-dot" style={{ background: cfg.bg }}>
-                          <span
-                            className="material-symbols-rounded"
-                            style={{
-                              fontSize: 16,
-                              color: "white",
-                              fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24",
-                            }}
-                          >
+                          <span className="material-symbols-rounded" style={{ fontSize: 16, color: "white", fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
                             {cfg.icon}
                           </span>
                         </div>
@@ -194,7 +167,6 @@ export default function NavBar_Donor() {
                   })
                 )}
               </ul>
-
               {notifications.length > 0 && (
                 <div className="notif-panel-footer">
                   <button
@@ -203,9 +175,7 @@ export default function NavBar_Donor() {
                       try {
                         await api.post("/notifications/mark-all-read");
                         setUnreadCount(0);
-                        setNotifications((prev) =>
-                          prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() }))
-                        );
+                        setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
                       } catch (_) {}
                     }}
                   >
@@ -213,12 +183,10 @@ export default function NavBar_Donor() {
                   </button>
                 </div>
               )}
-
             </div>
           )}
         </div>
 
-        {/* DONOR NAME + LOGOUT */}
         <div className="user-navbar-user">
           <span className="material-symbols-rounded user-navbar-avatar">account_circle</span>
           <span className="user-navbar-name">{donorName}</span>
@@ -226,7 +194,6 @@ export default function NavBar_Donor() {
             <span className="material-symbols-rounded">logout</span>
           </button>
         </div>
-
       </div>
     </nav>
   );

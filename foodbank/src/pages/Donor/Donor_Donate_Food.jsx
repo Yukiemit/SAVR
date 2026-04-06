@@ -1,11 +1,20 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  GoogleMap,
+  useJsApiLoader,
+  Marker,
+  Autocomplete,
+} from "@react-google-maps/api";
 import NavBar_Donor from "../../components/NavBar_Donor";
 import api from "../../services/api";
 
+// ── GOOGLE MAPS SETUP ────────────────────────────────────────────────────────
+const LIBRARIES = ["places"];
+const MAP_CONTAINER_STYLE = { width: "100%", height: "220px", borderRadius: "10px" };
+const DEFAULT_CENTER = { lat: 14.5995, lng: 120.9842 }; // Manila, PH
+
 // ── WAREHOUSE COORDINATES (for DELIVERY mode) ────────────────────────────────
-// Backend: fetch from GET /api/settings/warehouse → { lat, lng, address }
-// Update these to your actual warehouse coordinates.
 const WAREHOUSE = {
   lat:     14.4445,
   lng:     120.9942,
@@ -13,20 +22,13 @@ const WAREHOUSE = {
 };
 
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
-const UNITS = ["g", "kg", "lbs", "L", "ml", "gal", "meal", "oz"];
-
+const UNITS      = ["g", "kg", "lbs", "L", "ml", "gal", "meal", "oz"];
 const CATEGORIES = [
-  "Meat",
-  "Protein Alternatives",
-  "Fruits",
-  "Vegetables",
-  "Grains & Cereals",
-  "Dairy",
-  "Fats & Oils",
-  "Sugars & Sweets",
+  "Meat", "Protein Alternatives", "Fruits", "Vegetables",
+  "Grains & Cereals", "Dairy", "Fats & Oils", "Sugars & Sweets",
 ];
 
-// ── EMPTY FOOD ITEM ──────────────────────────────────────────────────────────
+// ── EMPTY HELPERS ────────────────────────────────────────────────────────────
 const newItem = () => ({
   id:              Date.now() + Math.random(),
   food_name:       "",
@@ -39,7 +41,6 @@ const newItem = () => ({
   photo_preview:   null,
 });
 
-// ── EMPTY SCHEDULE STATE ─────────────────────────────────────────────────────
 const EMPTY_SCHEDULE = {
   mode:            "pickup",
   pickup_address:  "",
@@ -52,7 +53,20 @@ const EMPTY_SCHEDULE = {
 export default function Donor_Donate_Food() {
   const navigate = useNavigate();
 
-  // ── Food items list ──────────────────────────────────────────────────────
+  // ── Google Maps loader ───────────────────────────────────────────────────
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries: LIBRARIES,
+  });
+    console.log("KEY:", import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
+
+  // ── Map state ────────────────────────────────────────────────────────────
+  const [mapCenter,    setMapCenter]    = useState(DEFAULT_CENTER);
+  const [markerPos,    setMarkerPos]    = useState(null);
+  const autocompleteRef                = useRef(null);
+  const mapRef                         = useRef(null);
+
+  // ── Food items ───────────────────────────────────────────────────────────
   const [items,    setItems]    = useState([newItem()]);
   const [itemErrs, setItemErrs] = useState({});
 
@@ -61,31 +75,67 @@ export default function Donor_Donate_Food() {
   const [scheduleErrs, setScheduleErrs] = useState({});
 
   // ── Submit status ────────────────────────────────────────────────────────
-  const [status, setStatus] = useState(null); // null | "loading" | "success" | "error"
+  const [status, setStatus] = useState(null);
+
+  // ── Map callbacks ─────────────────────────────────────────────────────────
+  const onMapLoad = useCallback((map) => {
+    mapRef.current = map;
+  }, []);
+
+  // Called when user selects an address from autocomplete dropdown
+  const onPlaceChanged = () => {
+    if (!autocompleteRef.current) return;
+    const place = autocompleteRef.current.getPlace();
+    if (!place.geometry) return;
+
+    const lat = place.geometry.location.lat();
+    const lng = place.geometry.location.lng();
+    const address = place.formatted_address || place.name || "";
+
+    setMarkerPos({ lat, lng });
+    setMapCenter({ lat, lng });
+    setSchedule((prev) => ({ ...prev, pickup_address: address }));
+    if (scheduleErrs.pickup_address)
+      setScheduleErrs((p) => ({ ...p, pickup_address: null }));
+  };
+
+  // Called when user drags the marker to a new position
+  const onMarkerDragEnd = async (e) => {
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    setMarkerPos({ lat, lng });
+    setMapCenter({ lat, lng });
+
+    // Reverse geocode: lat/lng → human-readable address
+    try {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ location: { lat, lng } }, (results, geoStatus) => {
+        if (geoStatus === "OK" && results[0]) {
+          const addr = results[0].formatted_address;
+          setSchedule((prev) => ({ ...prev, pickup_address: addr }));
+        }
+      });
+    } catch (err) {
+      console.error("Reverse geocode failed:", err);
+    }
+  };
 
   // ── Food item helpers ────────────────────────────────────────────────────
   const updateItem = (id, field, value) => {
     setItems((prev) =>
       prev.map((it) => it.id === id ? { ...it, [field]: value } : it)
     );
-    if (itemErrs[id]?.[field]) {
-      setItemErrs((prev) => ({
-        ...prev,
-        [id]: { ...prev[id], [field]: null },
-      }));
-    }
+    if (itemErrs[id]?.[field])
+      setItemErrs((prev) => ({ ...prev, [id]: { ...prev[id], [field]: null } }));
   };
 
   const handlePhotoChange = (id, file) => {
     if (!file) return;
     const allowed = ["image/jpeg", "image/png", "image/webp"];
-    if (!allowed.includes(file.type)) return;
-    if (file.size > 5 * 1024 * 1024) return;
+    if (!allowed.includes(file.type) || file.size > 5 * 1024 * 1024) return;
     const preview = URL.createObjectURL(file);
     setItems((prev) =>
-      prev.map((it) =>
-        it.id === id ? { ...it, photo: file, photo_preview: preview } : it
-      )
+      prev.map((it) => it.id === id ? { ...it, photo: file, photo_preview: preview } : it)
     );
   };
 
@@ -117,14 +167,14 @@ export default function Donor_Donate_Food() {
   const setMode = (mode) => {
     setSchedule((prev) => ({ ...prev, mode }));
     setScheduleErrs({});
-  };
-
-  // ── Address input helper (ready for Mapbox integration later) ─────────────
-  // When Mapbox is integrated, replace this with forward geocode + map fly-to
-  const handleAddressInput = (value) => {
-    setSchedule((prev) => ({ ...prev, pickup_address: value }));
-    if (scheduleErrs.pickup_address)
-      setScheduleErrs((p) => ({ ...p, pickup_address: null }));
+    // For delivery mode, center map on warehouse
+    if (mode === "delivery") {
+      setMapCenter({ lat: WAREHOUSE.lat, lng: WAREHOUSE.lng });
+      setMarkerPos({ lat: WAREHOUSE.lat, lng: WAREHOUSE.lng });
+    } else {
+      setMarkerPos(null);
+      setMapCenter(DEFAULT_CENTER);
+    }
   };
 
   // ── Validation ───────────────────────────────────────────────────────────
@@ -134,16 +184,12 @@ export default function Donor_Donate_Food() {
 
     items.forEach((it) => {
       const e = {};
-      if (!it.food_name.trim())
-        e.food_name = "Food name is required.";
+      if (!it.food_name.trim())       e.food_name = "Food name is required.";
       if (!it.quantity || isNaN(Number(it.quantity)) || Number(it.quantity) < 1)
-        e.quantity = "Enter a valid quantity.";
-      if (!it.unit)
-        e.unit = "Select a unit.";
-      if (!it.category)
-        e.category = "Select a category.";
-      if (!it.expiration_date)
-        e.expiration_date = "Expiration date is required.";
+                                      e.quantity  = "Enter a valid quantity.";
+      if (!it.unit)                   e.unit      = "Select a unit.";
+      if (!it.category)               e.category  = "Select a category.";
+      if (!it.expiration_date)        e.expiration_date = "Expiration date is required.";
       if (Object.keys(e).length > 0) { newItemErrs[it.id] = e; valid = false; }
     });
 
@@ -152,36 +198,19 @@ export default function Donor_Donate_Food() {
     const se = {};
     if (schedule.mode === "pickup" && !schedule.pickup_address.trim())
       se.pickup_address = "Please enter your pickup address.";
-    if (!schedule.preferred_date)
-      se.preferred_date = "Preferred date is required.";
-    if (!schedule.time_slot_start)
-      se.time_slot_start = "Start time is required.";
-    if (!schedule.time_slot_end)
-      se.time_slot_end = "End time is required.";
-    if (
-      schedule.time_slot_start &&
-      schedule.time_slot_end &&
-      schedule.time_slot_start >= schedule.time_slot_end
-    ) se.time_slot_end = "End time must be after start time.";
+    if (!schedule.preferred_date)   se.preferred_date  = "Preferred date is required.";
+    if (!schedule.time_slot_start)  se.time_slot_start = "Start time is required.";
+    if (!schedule.time_slot_end)    se.time_slot_end   = "End time is required.";
+    if (schedule.time_slot_start && schedule.time_slot_end &&
+        schedule.time_slot_start >= schedule.time_slot_end)
+      se.time_slot_end = "End time must be after start time.";
 
     setScheduleErrs(se);
     if (Object.keys(se).length > 0) valid = false;
-
     return valid;
   };
 
   // ── Submit ───────────────────────────────────────────────────────────────
-  // Backend: POST /api/donor/donations  (multipart/form-data)
-  // Fields:
-  //   type              → "food"
-  //   mode              → "pickup" | "delivery"
-  //   pickup_address    → string (pickup only)
-  //   preferred_date    → "YYYY-MM-DD"
-  //   time_slot_start   → "HH:MM"
-  //   time_slot_end     → "HH:MM"
-  //   items             → JSON string of items array (without photos)
-  //   photo_{index}     → File (one per item that has a photo)
-  // Returns: { id, status: "pending", created_at, ... }
   const handleSubmit = async () => {
     if (!validate()) return;
     setStatus("loading");
@@ -196,11 +225,14 @@ export default function Donor_Donate_Food() {
 
       if (schedule.mode === "pickup") {
         fd.append("pickup_address", schedule.pickup_address);
+        if (markerPos) {
+          fd.append("pickup_lat", markerPos.lat);
+          fd.append("pickup_lng", markerPos.lng);
+        }
       }
 
       const itemsPayload = items.map(({ photo, photo_preview, ...rest }) => rest);
       fd.append("items", JSON.stringify(itemsPayload));
-
       items.forEach((it, idx) => {
         if (it.photo) fd.append(`photo_${idx}`, it.photo);
       });
@@ -216,18 +248,18 @@ export default function Donor_Donate_Food() {
       setStatus("success");
       setItems([newItem()]);
       setSchedule(EMPTY_SCHEDULE);
+      setMarkerPos(null);
+      setMapCenter(DEFAULT_CENTER);
     } catch {
       setStatus("error");
     }
   };
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-  const iErr = (id, field) => itemErrs[id]?.[field];
-  const sErr = (field)     => scheduleErrs[field];
-
+  const iErr    = (id, field) => itemErrs[id]?.[field];
+  const sErr    = (field)     => scheduleErrs[field];
   const itemInp = (id, field) =>
     `don-food-input${iErr(id, field) ? " don-food-input-err" : ""}`;
-
   const schedInp = (field) =>
     `don-food-sched-input${sErr(field) ? " don-food-sched-input-err" : ""}`;
 
@@ -238,7 +270,7 @@ export default function Donor_Donate_Food() {
 
       <main className="don-food-main">
 
-        {/* ── PAGE HEADER ── */}
+        {/* PAGE HEADER */}
         <div className="don-food-page-header">
           <div className="don-food-title-row">
             <img
@@ -251,12 +283,11 @@ export default function Donor_Donate_Food() {
           <hr className="don-food-page-divider" />
         </div>
 
-        {/* ── BODY: two columns ── */}
+        {/* BODY: two columns */}
         <div className="don-food-body">
 
           {/* ══ LEFT — Food Items ══ */}
           <div className="don-food-left">
-
             <div className="don-food-section-header">
               <h2 className="don-food-section-title">Food Donation Details</h2>
               <button className="don-food-add-btn" onClick={addItem}>
@@ -280,7 +311,6 @@ export default function Donor_Donate_Food() {
                 />
               ))}
             </div>
-
           </div>
 
           {/* ══ RIGHT — Schedule Panel ══ */}
@@ -319,13 +349,33 @@ export default function Donor_Donate_Food() {
                   <label className="don-food-sched-label">Pickup Address</label>
                   <div className="don-food-addr-input-wrap">
                     <span className="material-symbols-rounded don-food-addr-icon">location_on</span>
-                    <input
-                      className={schedInp("pickup_address") + " don-food-addr-input"}
-                      type="text"
-                      placeholder="Enter your pickup address"
-                      value={schedule.pickup_address}
-                      onChange={(e) => handleAddressInput(e.target.value)}
-                    />
+                    {isLoaded ? (
+                      <Autocomplete
+                        onLoad={(ref) => (autocompleteRef.current = ref)}
+                        onPlaceChanged={onPlaceChanged}
+                        options={{ componentRestrictions: { country: "ph" } }}
+                        style={{ width: "100%" }}
+                      >
+                        <input
+                          className={schedInp("pickup_address") + " don-food-addr-input"}
+                          type="text"
+                          placeholder="Enter your pickup address"
+                          value={schedule.pickup_address}
+                          onChange={(e) => {
+                            setSchedule((prev) => ({ ...prev, pickup_address: e.target.value }));
+                            if (scheduleErrs.pickup_address)
+                              setScheduleErrs((p) => ({ ...p, pickup_address: null }));
+                          }}
+                        />
+                      </Autocomplete>
+                    ) : (
+                      <input
+                        className={schedInp("pickup_address") + " don-food-addr-input"}
+                        type="text"
+                        placeholder="Loading map..."
+                        disabled
+                      />
+                    )}
                   </div>
                   {sErr("pickup_address") && (
                     <span className="don-food-sched-err">{sErr("pickup_address")}</span>
@@ -333,42 +383,65 @@ export default function Donor_Donate_Food() {
                 </div>
               )}
 
-              {/* ── MAP PLACEHOLDER ──────────────────────────────────────────
-                  Replace this entire .don-food-map-placeholder div with:
-
-                  <div ref={mapContainer} className="don-food-map" />
-
-                  once Mapbox is integrated. The map container size
-                  (.don-food-map) is already defined in the CSS.
-              ─────────────────────────────────────────────────────────────── */}
+              {/* ── GOOGLE MAP ── */}
               <div className="don-food-map-placeholder">
-                {/* Swap src for your own map screenshot / placeholder image */}
-                <img
-                  src="/images/map_placeholder.png"
-                  alt="Map placeholder"
-                  className="don-food-map-placeholder-img"
-                  draggable={false}
-                />
-                <div className="don-food-map-placeholder-badge">
-                  <span className="material-symbols-rounded">map</span>
-                  Map will appear here
-                </div>
-                {/* Pin dot representing the address */}
-                {(schedule.mode === "pickup"
-                    ? schedule.pickup_address
-                    : WAREHOUSE.address) && (
-                  <div className="don-food-map-pin">
-                    <span className="material-symbols-rounded don-food-map-pin-icon">
-                      {schedule.mode === "delivery" ? "warehouse" : "location_on"}
-                    </span>
-                    <span className="don-food-map-pin-label">
-                      {schedule.mode === "delivery"
-                        ? WAREHOUSE.address
-                        : schedule.pickup_address}
-                    </span>
+                {loadError && (
+                  <div className="don-food-map-placeholder-badge">
+                    <span className="material-symbols-rounded">error</span>
+                    Failed to load map
+                  </div>
+                )}
+
+                {!loadError && !isLoaded && (
+                  <div className="don-food-map-placeholder-badge">
+                    <span className="material-symbols-rounded">map</span>
+                    Loading map…
+                  </div>
+                )}
+
+                {!loadError && isLoaded && (
+                  <GoogleMap
+                    mapContainerStyle={MAP_CONTAINER_STYLE}
+                    center={mapCenter}
+                    zoom={markerPos ? 16 : 12}
+                    onLoad={onMapLoad}
+                    options={{
+                      streetViewControl: false,
+                      mapTypeControl: false,
+                      fullscreenControl: false,
+                    }}
+                  >
+                    {markerPos && (
+                      <Marker
+                        position={markerPos}
+                        draggable={schedule.mode === "pickup"}
+                        onDragEnd={onMarkerDragEnd}
+                        title={
+                          schedule.mode === "pickup"
+                            ? "Drag to adjust pickup location"
+                            : "Warehouse location"
+                        }
+                      />
+                    )}
+                  </GoogleMap>
+                )}
+
+                {isLoaded && !markerPos && (
+                  <div className="don-food-map-placeholder-badge">
+                    <span className="material-symbols-rounded">map</span>
+                    {schedule.mode === "pickup"
+                      ? "Enter an address to see it on the map"
+                      : "Map will appear here"}
                   </div>
                 )}
               </div>
+
+              {/* Hint text for draggable marker */}
+              {isLoaded && markerPos && schedule.mode === "pickup" && (
+                <p style={{ fontSize: "11px", color: "#888", margin: "-4px 0 8px", textAlign: "center" }}>
+                  📍 Drag the pin to fine-tune your pickup location
+                </p>
+              )}
 
               {/* Preferred Date + Time Slot */}
               <div className="don-food-sched-row">
@@ -420,7 +493,7 @@ export default function Donor_Donate_Food() {
 
         </div>
 
-        {/* ── STATUS ── */}
+        {/* STATUS */}
         {status === "success" && (
           <p className="don-food-status don-food-status-success">
             ✓ Food donation submitted successfully!
@@ -432,7 +505,7 @@ export default function Donor_Donate_Food() {
           </p>
         )}
 
-        {/* ── SUBMIT ROW ── */}
+        {/* SUBMIT ROW */}
         <div className="don-food-submit-row">
           <button
             className="don-food-cancel-btn"
@@ -445,11 +518,7 @@ export default function Donor_Donate_Food() {
             onClick={handleSubmit}
             disabled={status === "loading" || status === "success"}
           >
-            {status === "loading"
-              ? "Submitting…"
-              : status === "success"
-              ? "Submitted ✓"
-              : "Submit"}
+            {status === "loading" ? "Submitting…" : status === "success" ? "Submitted ✓" : "Submit"}
           </button>
         </div>
 
@@ -468,7 +537,6 @@ function FoodItemCard({
   return (
     <div className="don-food-item-card">
 
-      {/* Card index label */}
       <div className="don-food-item-card-header">
         <span className="don-food-item-card-num">Item #{index + 1}</span>
         {total > 1 && (
@@ -482,7 +550,6 @@ function FoodItemCard({
         )}
       </div>
 
-      {/* Row 1: Food name | Quantity | Units | Category | Expiration */}
       <div className="don-food-item-row">
 
         <div className="don-food-item-field don-food-item-field-name">
@@ -494,9 +561,7 @@ function FoodItemCard({
             value={item.food_name}
             onChange={(e) => onUpdate(item.id, "food_name", e.target.value)}
           />
-          {errors.food_name && (
-            <span className="don-food-item-err">{errors.food_name}</span>
-          )}
+          {errors.food_name && <span className="don-food-item-err">{errors.food_name}</span>}
         </div>
 
         <div className="don-food-item-field don-food-item-field-qty">
@@ -509,9 +574,7 @@ function FoodItemCard({
             value={item.quantity}
             onChange={(e) => onUpdate(item.id, "quantity", e.target.value)}
           />
-          {errors.quantity && (
-            <span className="don-food-item-err">{errors.quantity}</span>
-          )}
+          {errors.quantity && <span className="don-food-item-err">{errors.quantity}</span>}
         </div>
 
         <div className="don-food-item-field don-food-item-field-unit">
@@ -524,9 +587,7 @@ function FoodItemCard({
             <option value="" disabled>–</option>
             {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
           </select>
-          {errors.unit && (
-            <span className="don-food-item-err">{errors.unit}</span>
-          )}
+          {errors.unit && <span className="don-food-item-err">{errors.unit}</span>}
         </div>
 
         <div className="don-food-item-field don-food-item-field-cat">
@@ -539,9 +600,7 @@ function FoodItemCard({
             <option value="" disabled>Select</option>
             {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          {errors.category && (
-            <span className="don-food-item-err">{errors.category}</span>
-          )}
+          {errors.category && <span className="don-food-item-err">{errors.category}</span>}
         </div>
 
         <div className="don-food-item-field don-food-item-field-exp">
@@ -552,20 +611,16 @@ function FoodItemCard({
             value={item.expiration_date}
             onChange={(e) => onUpdate(item.id, "expiration_date", e.target.value)}
           />
-          {errors.expiration_date && (
-            <span className="don-food-item-err">{errors.expiration_date}</span>
-          )}
+          {errors.expiration_date && <span className="don-food-item-err">{errors.expiration_date}</span>}
         </div>
 
       </div>
 
-      {/* Row 2: Special Notes | Upload Photo */}
       <div className="don-food-item-row don-food-item-row2">
 
         <div className="don-food-item-field don-food-item-field-notes">
           <label className="don-food-item-label">
-            Special Notes{" "}
-            <span className="don-food-item-label-opt">(optional)</span>
+            Special Notes <span className="don-food-item-label-opt">(optional)</span>
           </label>
           <input
             className="don-food-input"
@@ -576,11 +631,9 @@ function FoodItemCard({
           />
         </div>
 
-        {/* Photo upload */}
         <div className="don-food-item-field don-food-item-field-photo">
           <label className="don-food-item-label">
-            Photo{" "}
-            <span className="don-food-item-label-opt">(optional)</span>
+            Photo <span className="don-food-item-label-opt">(optional)</span>
           </label>
           <div
             className={`don-food-photo-box${item.photo ? " don-food-photo-has-file" : ""}`}
@@ -588,11 +641,7 @@ function FoodItemCard({
             title="Upload item photo"
           >
             {item.photo_preview ? (
-              <img
-                src={item.photo_preview}
-                alt="Preview"
-                className="don-food-photo-preview"
-              />
+              <img src={item.photo_preview} alt="Preview" className="don-food-photo-preview" />
             ) : (
               <>
                 <span className="material-symbols-rounded don-food-photo-icon">upload</span>
