@@ -18,6 +18,10 @@ import StaffDonationRequest from "./pages/Staff/Staff_DonationRequest";
 import StaffDonationDrive from "./pages/Staff/Staff_DonationDrive";
 
 import DonorDashboard from "./pages/Donor/Donor_Dashboard";
+import DonorDonate from "./pages/Donor/Donor_Donate";
+import DonorDonateService from "./pages/Donor/Donor_Donate_Service";
+import DonorDonateFinancial from "./pages/Donor/Donor_Donate_Financial";
+
 
 import AdminDashboard from "./pages/Admin/Admin_Dashboard";
 import AdminAccounts from "./pages/Admin/Admin_Accounts";
@@ -55,6 +59,9 @@ function App() {
 
         {/* ── DONOR ── */}
         <Route path="/donor/dashboard" element={<DonorDashboard />} />
+        <Route path="/donor/donate" element={<DonorDonate />} />
+        <Route path="/donor/donate/service" element={<DonorDonateService />} />
+        <Route path="/donor/donate/financial" element={<DonorDonateFinancial />} />
 
         {/* ── ADMIN ── */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} />

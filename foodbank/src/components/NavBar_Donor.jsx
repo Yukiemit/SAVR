@@ -4,7 +4,8 @@ import api from "../services/api";
 
 const navItems = [
   { label: "Dashboard", path: "/donor/dashboard" },
-  { label: "Donate",    path: "/donate"           },
+  { label: "Donate",    path: "/donor/donate"           },
+  { label: "Report",    path: "/donor/reports"    },
 ];
 
 const iconConfig = (type) => {
