@@ -1,379 +1,265 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import NavBar_Donor from "../../components/NavBar_Donor";
 import api from "../../services/api";
 
-// ── CONSTANTS ────────────────────────────────────────────────────────────────
-
-const EWALLET_CHOICES = ["GCash", "Bank Transfer"];
-
-// ── EMPTY FORM STATE ─────────────────────────────────────────────────────────
-
-const EMPTY_FORM = {
-  payment_method:   "",       // "GCash" | "Bank Transfer"
-  receipt:          null,     // File object
-  receipt_preview:  null,     // local object URL for preview
-  receipt_number:   "",
-  amount:           "",       // in PHP peso
-  date:             "",
-  time:             "",
-  message:          "",       // optional
-};
+// ── PRESET AMOUNTS ────────────────────────────────────────────────────────────
+const PRESETS = [500, 1000, 2000, 5000];
 
 // ── COMPONENT ────────────────────────────────────────────────────────────────
-
 export default function Donor_Donate_Financial() {
-  const navigate   = useNavigate();
-  const fileRef    = useRef(null);
+  const navigate = useNavigate();
 
-  const [form,   setForm]   = useState(EMPTY_FORM);
-  const [errors, setErrors] = useState({});
-  const [status, setStatus] = useState(null); // null | "loading" | "success" | "error"
-  const [qrZoomed, setQrZoomed] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState(null);
+  const [customAmount,   setCustomAmount]   = useState("");
+  const [message,        setMessage]        = useState("");
+  const [errors,         setErrors]         = useState({});
+  const [status,         setStatus]         = useState(null);
 
-  // ── Field change handler ─────────────────────────────────────────────────
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
+  // Preset takes priority over custom input
+  const effectiveAmount = selectedPreset ?? (customAmount ? Number(customAmount) : null);
+
+  const handlePreset = (val) => {
+    setSelectedPreset(val);
+    setCustomAmount("");
+    if (errors.amount) setErrors((p) => ({ ...p, amount: null }));
   };
 
-  // ── Receipt file upload ──────────────────────────────────────────────────
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate type — accept images and PDF only
-    const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-    if (!allowed.includes(file.type)) {
-      setErrors((prev) => ({ ...prev, receipt: "Only JPG, PNG, WEBP, or PDF files are allowed." }));
-      return;
-    }
-
-    // Validate size — max 5 MB
-    if (file.size > 5 * 1024 * 1024) {
-      setErrors((prev) => ({ ...prev, receipt: "File must be under 5 MB." }));
-      return;
-    }
-
-    const preview = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
-    setForm((prev) => ({ ...prev, receipt: file, receipt_preview: preview }));
-    setErrors((prev) => ({ ...prev, receipt: null }));
+  const handleCustom = (e) => {
+    setCustomAmount(e.target.value);
+    setSelectedPreset(null);
+    if (errors.amount) setErrors((p) => ({ ...p, amount: null }));
   };
 
-  const handleRemoveFile = () => {
-    if (form.receipt_preview) URL.revokeObjectURL(form.receipt_preview);
-    setForm((prev) => ({ ...prev, receipt: null, receipt_preview: null }));
-    if (fileRef.current) fileRef.current.value = "";
-  };
-
-  // ── Validation ───────────────────────────────────────────────────────────
   const validate = () => {
     const e = {};
-
-    if (!form.payment_method)
-      e.payment_method = "Please select a payment method.";
-
-    if (!form.receipt)
-      e.receipt = "Please upload your receipt.";
-
-    if (!form.receipt_number.trim())
-      e.receipt_number = "Receipt number is required.";
-
-    if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) < 1)
-      e.amount = "Enter a valid donation amount (₱1 minimum).";
-
-    if (!form.date)
-      e.date = "Please select a date.";
-
-    if (!form.time)
-      e.time = "Please select a time.";
-
-    // message is optional — no validation
-
+    if (!effectiveAmount || isNaN(effectiveAmount) || effectiveAmount < 100)
+      e.amount = "Minimum donation is ₱100.";
     return e;
   };
 
-  // ── Submit ───────────────────────────────────────────────────────────────
-  // Backend: POST /api/donor/donations  (multipart/form-data)
-  // Fields:
-  //   type             → "financial"
-  //   payment_method   → "GCash" | "Bank Transfer"
-  //   receipt          → File (binary)
-  //   receipt_number   → string
-  //   amount           → number (PHP peso)
-  //   date             → "YYYY-MM-DD"
-  //   time             → "HH:MM"
-  //   message          → string | null
-  // Returns: { id, status: "pending", created_at, ... }
   const handleSubmit = async () => {
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
-
-    setStatus("loading");
+    setStatus("redirecting");
     try {
-      const fd = new FormData();
-      fd.append("type",           "financial");
-      fd.append("payment_method", form.payment_method);
-      fd.append("receipt",        form.receipt);
-      fd.append("receipt_number", form.receipt_number);
-      fd.append("amount",         form.amount);
-      fd.append("date",           form.date);
-      fd.append("time",           form.time);
-      if (form.message.trim()) fd.append("message", form.message);
-
-      await api.post("/donor/donations", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const res = await api.post("/donor/donations/paymongo", {
+        amount:  effectiveAmount,
+        message: message.trim() || null,
       });
-
-      setStatus("success");
-      // Revoke preview URL to free memory
-      if (form.receipt_preview) URL.revokeObjectURL(form.receipt_preview);
-      setForm(EMPTY_FORM);
-      if (fileRef.current) fileRef.current.value = "";
+      window.location.href = res.data.checkout_url;
     } catch {
       setStatus("error");
     }
   };
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
-  const inp = (name) =>
-    `don-fin-input${errors[name] ? " don-fin-input-err" : ""}`;
+  // ── Shared field style (inside amber card) ────────────────────────────────
+  const fieldInput = (hasErr = false) => ({
+    width: "100%",
+    padding: "12px 16px",
+    background: "rgba(255,255,255,0.35)",
+    border: hasErr ? "1.5px solid #e53935" : "1.5px solid rgba(255,255,255,0.5)",
+    borderRadius: 10,
+    fontSize: 15,
+    color: "#fff",
+    outline: "none",
+    boxSizing: "border-box",
+    fontFamily: "inherit",
+    "::placeholder": { color: "rgba(255,255,255,0.6)" },
+  });
 
-  // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="don-fin-wrapper">
-
-      {/* ── NAVBAR ── */}
+    <div style={{ minHeight: "100vh", background: "#f5f0e8", fontFamily: "inherit" }}>
       <NavBar_Donor />
 
-      <main className="don-fin-main">
+      <main style={{ padding: "0 24px 60px" }}>
 
         {/* ── PAGE HEADER ── */}
-        <div className="don-fin-page-header">
-          <div className="don-fin-title-row">
+        <div style={{ textAlign: "center", padding: "36px 0 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
             <img
               src="/images/Donor_Financial.png"
               alt="Financial Donation"
-              className="don-fin-title-icon"
+              style={{ width: 44, height: 44, objectFit: "contain" }}
             />
-            <h1 className="don-fin-page-title">Financial Donation</h1>
+            <h1 style={{ fontSize: 32, fontWeight: 900, color: "#1a1a1a", margin: 0, letterSpacing: 0.5 }}>
+              Financial Donation
+            </h1>
           </div>
-          <hr className="don-fin-page-divider" />
+          <hr style={{ border: "none", borderTop: "1.5px solid #ddd", margin: "20px auto 0", maxWidth: 900 }} />
         </div>
 
-        {/* ── FORM CARD ── */}
-        <div className="don-fin-card">
+        {/* ── AMBER CARD ── */}
+        <div style={{
+          maxWidth: 720,
+          margin: "0 auto",
+          background: "#f0b429",
+          borderRadius: 20,
+          padding: "32px 36px 36px",
+        }}>
 
-          {/* ── LEFT COLUMN ── */}
-          <div className="don-fin-left">
-
-            {/* Payment Method */}
-            <div className="don-fin-field">
-              <label className="don-fin-label">Payment Method</label>
-              <select
-                className={inp("payment_method") + " don-fin-select"}
-                name="payment_method"
-                value={form.payment_method}
-                onChange={handleChange}
+          {/* SELECT AMOUNT */}
+          <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 10 }}>
+            Select Amount
+          </label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+            {PRESETS.map((val) => (
+              <button
+                key={val}
+                onClick={() => handlePreset(val)}
+                style={{
+                  padding: "16px 12px",
+                  background: selectedPreset === val ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.25)",
+                  border: selectedPreset === val ? "2px solid #fff" : "2px solid rgba(255,255,255,0.4)",
+                  borderRadius: 12,
+                  fontSize: 20,
+                  fontWeight: 800,
+                  color: "#fff",
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
               >
-                <option value="" disabled>Select E-Wallet</option>
-                {EWALLET_CHOICES.map((w) => (
-                  <option key={w} value={w}>{w}</option>
-                ))}
-              </select>
-              {errors.payment_method && (
-                <span className="don-fin-err">{errors.payment_method}</span>
-              )}
-            </div>
-
-            {/* Upload Receipt */}
-            <div className="don-fin-field">
-              <div
-                className={`don-fin-upload-box${errors.receipt ? " don-fin-upload-err" : ""}${form.receipt ? " don-fin-upload-has-file" : ""}`}
-                onClick={() => fileRef.current?.click()}
-              >
-                {form.receipt_preview ? (
-                  <img
-                    src={form.receipt_preview}
-                    alt="Receipt preview"
-                    className="don-fin-receipt-preview"
-                  />
-                ) : (
-                  <>
-                    <span className="material-symbols-rounded don-fin-upload-icon">upload</span>
-                    <span className="don-fin-upload-text">
-                      {form.receipt ? form.receipt.name : "Upload Receipt"}
-                    </span>
-                  </>
-                )}
-              </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
-                style={{ display: "none" }}
-                onChange={handleFileChange}
-              />
-              {form.receipt && (
-                <button
-                  className="don-fin-remove-file-btn"
-                  onClick={handleRemoveFile}
-                  type="button"
-                >
-                  ✕ Remove file
-                </button>
-              )}
-              {errors.receipt && (
-                <span className="don-fin-err">{errors.receipt}</span>
-              )}
-            </div>
-
-            {/* Receipt Number + E-Wallet row */}
-            <div className="don-fin-row">
-              <div className="don-fin-field don-fin-field-grow">
-                <input
-                  className={inp("receipt_number")}
-                  type="text"
-                  name="receipt_number"
-                  placeholder="Receipt Number"
-                  value={form.receipt_number}
-                  onChange={handleChange}
-                />
-                {errors.receipt_number && (
-                  <span className="don-fin-err">{errors.receipt_number}</span>
-                )}
-              </div>
-              <div className="don-fin-field don-fin-field-sm">
-                {/* Read-only mirror of payment_method for display */}
-                <div className="don-fin-ewallet-badge">
-                  {form.payment_method || "E-wallet"}
-                </div>
-              </div>
-            </div>
-
-            {/* Donation Amount */}
-            <div className="don-fin-field">
-              <label className="don-fin-label">Donation Amount</label>
-              <div className="don-fin-amount-wrap">
-                <span className="don-fin-peso-sign">₱</span>
-                <input
-                  className={inp("amount") + " don-fin-amount-input"}
-                  type="number"
-                  name="amount"
-                  min="1"
-                  placeholder="Enter Donation Amount"
-                  value={form.amount}
-                  onChange={handleChange}
-                />
-              </div>
-              {errors.amount && (
-                <span className="don-fin-err">{errors.amount}</span>
-              )}
-            </div>
-
-            {/* Date + Time row */}
-            <div className="don-fin-row">
-              <div className="don-fin-field don-fin-field-half">
-                <label className="don-fin-label">Date</label>
-                <input
-                  className={inp("date")}
-                  type="date"
-                  name="date"
-                  value={form.date}
-                  onChange={handleChange}
-                />
-                {errors.date && (
-                  <span className="don-fin-err">{errors.date}</span>
-                )}
-              </div>
-              <div className="don-fin-field don-fin-field-half">
-                <label className="don-fin-label">Time</label>
-                <input
-                  className={inp("time")}
-                  type="time"
-                  name="time"
-                  value={form.time}
-                  onChange={handleChange}
-                />
-                {errors.time && (
-                  <span className="don-fin-err">{errors.time}</span>
-                )}
-              </div>
-            </div>
-
-            {/* Message (optional) */}
-            <div className="don-fin-field">
-              <label className="don-fin-label">
-                Message{" "}
-                <span className="don-fin-label-opt">(Optional)</span>
-              </label>
-              <textarea
-                className="don-fin-input don-fin-textarea"
-                name="message"
-                placeholder="Leave a message…"
-                value={form.message}
-                onChange={handleChange}
-              />
-            </div>
-
+                ₱ {val.toLocaleString()}
+              </button>
+            ))}
           </div>
-          {/* end left */}
 
-          {/* ── RIGHT COLUMN — QR ── */}
-          <div className="don-fin-right">
-            <p className="don-fin-qr-label">Scan First to Donate</p>
-            <div className="don-fin-qr-frame" onClick={() => setQrZoomed(true)}>
-                <img src="/images/QR_SAMPLE.png" alt="Donation QR Code" className="don-fin-qr-img" />
-                <div className="don-fin-qr-shine" />
-            </div>
-
-            {qrZoomed && (
-                <div className="don-fin-qr-overlay" onClick={() => setQrZoomed(false)}>
-                    <div className="don-fin-qr-zoom-box" onClick={(e) => e.stopPropagation()}>
-                    <img src="/images/QR_SAMPLE.png" alt="Donation QR Code" className="don-fin-qr-zoom-img" />
-                    <p className="don-fin-qr-zoom-hint">Tap outside to close</p>
-                    </div>
-                </div>
-            )}
-            <p className="don-fin-qr-hint">
-              Scan the QR code, complete your payment, then upload your receipt above.
+          {/* CUSTOM AMOUNT */}
+          <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
+            Or enter custom amount (₱)
+          </label>
+          <div style={{ position: "relative", marginBottom: errors.amount ? 4 : 20 }}>
+            <span style={{
+              position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
+              color: "rgba(255,255,255,0.75)", fontWeight: 700, fontSize: 15, pointerEvents: "none",
+            }}>
+              ₱
+            </span>
+            <input
+              type="number"
+              min="100"
+              placeholder="0.00"
+              value={customAmount}
+              onChange={handleCustom}
+              style={{
+                ...fieldInput(!!errors.amount),
+                paddingLeft: 32,
+                fontSize: 16,
+                fontWeight: 600,
+              }}
+            />
+          </div>
+          {errors.amount && (
+            <p style={{ color: "#fff", fontSize: 12, fontWeight: 700, margin: "0 0 16px", background: "rgba(229,57,53,0.35)", borderRadius: 8, padding: "6px 12px" }}>
+              ⚠ {errors.amount}
             </p>
+          )}
+
+          {/* PAYMENT METHOD */}
+          <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 10 }}>
+            Payment Method
+          </label>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            background: "rgba(255,255,255,0.25)",
+            border: "2px solid #fff",
+            borderRadius: 12,
+            padding: "14px 18px",
+            marginBottom: 20,
+          }}>
+            <div style={{
+              background: "rgba(255,255,255,0.30)",
+              borderRadius: 10,
+              width: 40,
+              height: 40,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}>
+              <span className="material-symbols-rounded" style={{ color: "#fff", fontSize: 22 }}>
+                credit_card
+              </span>
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#fff" }}>PayMongo</p>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: "rgba(255,255,255,0.80)" }}>GCash, Maya, Cards</p>
+            </div>
+            <span className="material-symbols-rounded" style={{ color: "#fff", fontSize: 22 }}>
+              check_circle
+            </span>
           </div>
 
-        </div>
-        {/* end don-fin-card */}
+          {/* MESSAGE */}
+          <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
+            Service Description / Extra Notes{" "}
+            <span style={{ fontWeight: 400, color: "rgba(255,255,255,0.75)" }}>(optional)</span>
+          </label>
+          <textarea
+            placeholder="Leave a message for the food bank…"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            style={{
+              ...fieldInput(),
+              resize: "vertical",
+              minHeight: 110,
+              padding: "12px 16px",
+            }}
+          />
 
-        {/* ── STATUS MESSAGES ── */}
-        {status === "success" && (
-          <p className="don-fin-status don-fin-status-success">
-            ✓ Financial donation submitted successfully!
+        </div>
+        {/* end amber card */}
+
+        {/* ── STATUS ── */}
+        {status === "redirecting" && (
+          <p style={{ textAlign: "center", color: "#c96a2e", fontWeight: 600, fontSize: 14, marginTop: 16 }}>
+            ⏳ Preparing your PayMongo checkout… please wait.
           </p>
         )}
         {status === "error" && (
-          <p className="don-fin-status don-fin-status-error">
+          <p style={{ textAlign: "center", color: "#e53935", fontWeight: 600, fontSize: 14, marginTop: 16 }}>
             Something went wrong. Please try again.
           </p>
         )}
 
-        {/* ── SUBMIT ROW ── */}
-        <div className="don-fin-submit-row">
+        {/* ── ACTION BUTTONS ── */}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 14, maxWidth: 720, margin: "24px auto 0" }}>
           <button
-            className="don-fin-cancel-btn"
             onClick={() => navigate("/donor/donate")}
+            disabled={status === "redirecting"}
+            style={{
+              padding: "13px 36px",
+              borderRadius: 50,
+              border: "1.5px solid #bbb",
+              background: "#fff",
+              color: "#444",
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
           >
             Cancel
           </button>
           <button
-            className="don-fin-submit-btn"
             onClick={handleSubmit}
-            disabled={status === "loading" || status === "success"}
+            disabled={status === "redirecting"}
+            style={{
+              padding: "13px 40px",
+              borderRadius: 50,
+              border: "none",
+              background: status === "redirecting" ? "#aaa" : "#2d5a27",
+              color: "#fff",
+              fontSize: 15,
+              fontWeight: 800,
+              cursor: status === "redirecting" ? "not-allowed" : "pointer",
+              fontFamily: "inherit",
+              letterSpacing: 0.3,
+            }}
           >
-            {status === "loading"
-              ? "Submitting…"
-              : status === "success"
-              ? "Submitted ✓"
-              : "Submit"}
+            {status === "redirecting" ? "Redirecting…" : "Submit"}
           </button>
         </div>
 

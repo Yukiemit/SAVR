@@ -29,19 +29,34 @@ const timeAgo = (dateStr) => {
 };
 
 export default function NavBar_Donor() {
-  const [donorName,     setDonorName]     = useState("Donor Name");
+  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const storedName = storedUser?.name || "Donor Name";
+
+  const [donorName,     setDonorName]     = useState(storedName);
   const [bellOpen,      setBellOpen]      = useState(false);
+  const [profileOpen,   setProfileOpen]   = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount,   setUnreadCount]   = useState(0);
   const [notifLoading,  setNotifLoading]  = useState(false);
-  const bellRef = useRef(null);
+  const bellRef    = useRef(null);
+  const profileRef = useRef(null);
 
-  // ✅ READ NAME FROM localStorage
+  // ── Fetch donor profile from API to keep name fresh ───────────────────────
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (user?.name) setDonorName(user.name);
+    const fetchProfile = async () => {
+      try {
+        const res  = await api.get("/donor/profile");
+        const name = res.data.name
+          || `${res.data.first_name ?? ""} ${res.data.last_name ?? ""}`.trim()
+          || storedName;
+        setDonorName(name);
+        localStorage.setItem("user", JSON.stringify({ ...storedUser, name }));
+      } catch (_) {}
+    };
+    fetchProfile();
   }, []);
 
+  // ── Fetch notifications ───────────────────────────────────────────────────
   const fetchNotifications = async () => {
     setNotifLoading(true);
     try {
@@ -58,34 +73,44 @@ export default function NavBar_Donor() {
     return () => clearInterval(interval);
   }, []);
 
+  // ── Close on outside click ────────────────────────────────────────────────
   useEffect(() => {
     const handleOutside = (e) => {
-      if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false);
+      if (bellRef.current    && !bellRef.current.contains(e.target))    setBellOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
     };
-    if (bellOpen) document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
-  }, [bellOpen]);
+  }, []);
 
+  // ── Bell click ────────────────────────────────────────────────────────────
   const handleBellClick = async () => {
     const opening = !bellOpen;
     setBellOpen(opening);
+    if (profileOpen) setProfileOpen(false);
     if (opening && unreadCount > 0) {
       try {
         await api.post("/notifications/mark-all-read");
         setUnreadCount(0);
-        setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
+        setNotifications((prev) =>
+          prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() }))
+        );
       } catch (_) {}
     }
   };
 
+  // ── Mark single read ──────────────────────────────────────────────────────
   const markRead = async (id) => {
     try {
       await api.post(`/notifications/${id}/mark-read`);
-      setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read_at: new Date().toISOString() } : n));
+      setNotifications((prev) =>
+        prev.map((n) => n.id === id ? { ...n, read_at: new Date().toISOString() } : n)
+      );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (_) {}
   };
 
+  // ── Logout ────────────────────────────────────────────────────────────────
   const handleLogout = async () => {
     try { await api.post("/logout"); } catch (_) {}
     localStorage.removeItem("token");
@@ -96,10 +121,13 @@ export default function NavBar_Donor() {
 
   return (
     <nav className="user-navbar">
+
+      {/* LOGO */}
       <div className="user-navbar-logo">
         <img src="/images/logobrown.png" alt="FoodBank Logo" />
       </div>
 
+      {/* NAV ITEMS */}
       <ul className="user-nav-list">
         {navItems.map((item) => (
           <li key={item.label} className="user-nav-item">
@@ -113,7 +141,10 @@ export default function NavBar_Donor() {
         ))}
       </ul>
 
+      {/* RIGHT SIDE */}
       <div className="user-navbar-right">
+
+        {/* NOTIFICATION BELL */}
         <div className="notif-bell-wrap" ref={bellRef}>
           <button
             className={`notif-bell-btn ${bellOpen ? "notif-bell-active" : ""}`}
@@ -175,7 +206,9 @@ export default function NavBar_Donor() {
                       try {
                         await api.post("/notifications/mark-all-read");
                         setUnreadCount(0);
-                        setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
+                        setNotifications((prev) =>
+                          prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() }))
+                        );
                       } catch (_) {}
                     }}
                   >
@@ -187,13 +220,63 @@ export default function NavBar_Donor() {
           )}
         </div>
 
-        <div className="user-navbar-user">
-          <span className="material-symbols-rounded user-navbar-avatar">account_circle</span>
-          <span className="user-navbar-name">{donorName}</span>
-          <button className="user-navbar-logout" onClick={handleLogout} title="Logout">
-            <span className="material-symbols-rounded">logout</span>
+        {/* PROFILE DROPDOWN */}
+        <div className="notif-bell-wrap" ref={profileRef}>
+          <button
+            className={`notif-bell-btn ${profileOpen ? "notif-bell-active" : ""}`}
+            onClick={() => { setProfileOpen((p) => !p); setBellOpen(false); }}
+            aria-label="Profile"
+          >
+            <span
+              className="material-symbols-rounded notif-bell-icon"
+              style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+            >
+              account_circle
+            </span>
           </button>
+
+          {profileOpen && (
+            <div className="notif-panel" style={{ minWidth: 220 }}>
+              <div className="notif-panel-header" style={{ flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#222" }}>{donorName}</p>
+                <p style={{ margin: 0, fontSize: 11, color: "#aaa" }}>Donor Account</p>
+              </div>
+              <ul className="notif-panel-list" style={{ padding: "6px 0" }}>
+                <li
+                  className="notif-panel-item"
+                  onClick={() => { window.location.href = "/donor/profile"; setProfileOpen(false); }}
+                  style={{ cursor: "pointer" }}
+                >
+                  <div className="notif-panel-dot" style={{ background: "#2e7d32" }}>
+                    <span className="material-symbols-rounded" style={{ fontSize: 16, color: "white", fontVariationSettings: "'FILL' 1" }}>
+                      manage_accounts
+                    </span>
+                  </div>
+                  <div className="notif-panel-body">
+                    <p className="notif-panel-name">My Profile</p>
+                    <p className="notif-panel-desc">View and edit your details</p>
+                  </div>
+                </li>
+                <li
+                  className="notif-panel-item"
+                  onClick={handleLogout}
+                  style={{ cursor: "pointer" }}
+                >
+                  <div className="notif-panel-dot" style={{ background: "#c0392b" }}>
+                    <span className="material-symbols-rounded" style={{ fontSize: 16, color: "white", fontVariationSettings: "'FILL' 1" }}>
+                      logout
+                    </span>
+                  </div>
+                  <div className="notif-panel-body">
+                    <p className="notif-panel-name" style={{ color: "#c0392b" }}>Logout</p>
+                    <p className="notif-panel-desc">Sign out of your account</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          )}
         </div>
+
       </div>
     </nav>
   );

@@ -12,13 +12,13 @@ import api from "../../services/api";
 // ── GOOGLE MAPS SETUP ────────────────────────────────────────────────────────
 const LIBRARIES = ["places"];
 const MAP_CONTAINER_STYLE = { width: "100%", height: "220px", borderRadius: "10px" };
-const DEFAULT_CENTER = { lat: 14.5995, lng: 120.9842 }; // Manila, PH
+const DEFAULT_CENTER = { lat: 14.5995, lng: 120.9842 };
 
-// ── WAREHOUSE COORDINATES (for DELIVERY mode) ────────────────────────────────
+// ── WAREHOUSE (DELIVERY mode — fixed drop-off location) ──────────────────────
 const WAREHOUSE = {
-  lat:     14.4445,
-  lng:     120.9942,
-  address: "231 Edi wow street, Las Piñas",
+  lat:     14.5564,
+  lng:     121.0166,
+  address: "Room 300, DHI Building, No. 2 Lapu Lapu Avenue, Magallanes, Makati City 1232, Metro Manila, Philippines",
 };
 
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -53,18 +53,16 @@ const EMPTY_SCHEDULE = {
 export default function Donor_Donate_Food() {
   const navigate = useNavigate();
 
-  // ── Google Maps loader ───────────────────────────────────────────────────
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
     libraries: LIBRARIES,
   });
-    console.log("KEY:", import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
 
   // ── Map state ────────────────────────────────────────────────────────────
-  const [mapCenter,    setMapCenter]    = useState(DEFAULT_CENTER);
-  const [markerPos,    setMarkerPos]    = useState(null);
-  const autocompleteRef                = useRef(null);
-  const mapRef                         = useRef(null);
+  const [mapCenter,  setMapCenter]  = useState(DEFAULT_CENTER);
+  const [markerPos,  setMarkerPos]  = useState(null);
+  const autocompleteRef             = useRef(null);
+  const mapRef                      = useRef(null);
 
   // ── Food items ───────────────────────────────────────────────────────────
   const [items,    setItems]    = useState([newItem()]);
@@ -77,21 +75,16 @@ export default function Donor_Donate_Food() {
   // ── Submit status ────────────────────────────────────────────────────────
   const [status, setStatus] = useState(null);
 
-  // ── Map callbacks ─────────────────────────────────────────────────────────
-  const onMapLoad = useCallback((map) => {
-    mapRef.current = map;
-  }, []);
+  // ── Map callbacks ────────────────────────────────────────────────────────
+  const onMapLoad = useCallback((map) => { mapRef.current = map; }, []);
 
-  // Called when user selects an address from autocomplete dropdown
   const onPlaceChanged = () => {
     if (!autocompleteRef.current) return;
     const place = autocompleteRef.current.getPlace();
     if (!place.geometry) return;
-
-    const lat = place.geometry.location.lat();
-    const lng = place.geometry.location.lng();
+    const lat     = place.geometry.location.lat();
+    const lng     = place.geometry.location.lng();
     const address = place.formatted_address || place.name || "";
-
     setMarkerPos({ lat, lng });
     setMapCenter({ lat, lng });
     setSchedule((prev) => ({ ...prev, pickup_address: address }));
@@ -99,14 +92,11 @@ export default function Donor_Donate_Food() {
       setScheduleErrs((p) => ({ ...p, pickup_address: null }));
   };
 
-  // Called when user drags the marker to a new position
   const onMarkerDragEnd = async (e) => {
     const lat = e.latLng.lat();
     const lng = e.latLng.lng();
     setMarkerPos({ lat, lng });
     setMapCenter({ lat, lng });
-
-    // Reverse geocode: lat/lng → human-readable address
     try {
       const geocoder = new window.google.maps.Geocoder();
       geocoder.geocode({ location: { lat, lng } }, (results, geoStatus) => {
@@ -167,8 +157,8 @@ export default function Donor_Donate_Food() {
   const setMode = (mode) => {
     setSchedule((prev) => ({ ...prev, mode }));
     setScheduleErrs({});
-    // For delivery mode, center map on warehouse
     if (mode === "delivery") {
+      // ✅ Show fixed warehouse location on map
       setMapCenter({ lat: WAREHOUSE.lat, lng: WAREHOUSE.lng });
       setMarkerPos({ lat: WAREHOUSE.lat, lng: WAREHOUSE.lng });
     } else {
@@ -184,25 +174,36 @@ export default function Donor_Donate_Food() {
 
     items.forEach((it) => {
       const e = {};
-      if (!it.food_name.trim())       e.food_name = "Food name is required.";
+      if (!it.food_name.trim())
+        e.food_name = "Food name is required.";
       if (!it.quantity || isNaN(Number(it.quantity)) || Number(it.quantity) < 1)
-                                      e.quantity  = "Enter a valid quantity.";
-      if (!it.unit)                   e.unit      = "Select a unit.";
-      if (!it.category)               e.category  = "Select a category.";
-      if (!it.expiration_date)        e.expiration_date = "Expiration date is required.";
+        e.quantity = "Enter a valid quantity.";
+      if (!it.unit)
+        e.unit = "Select a unit.";
+      if (!it.category)
+        e.category = "Select a category.";
+      if (!it.expiration_date)
+        e.expiration_date = "Expiration date is required.";
       if (Object.keys(e).length > 0) { newItemErrs[it.id] = e; valid = false; }
     });
 
     setItemErrs(newItemErrs);
 
     const se = {};
+    // ✅ Pickup address only required for pickup mode
     if (schedule.mode === "pickup" && !schedule.pickup_address.trim())
       se.pickup_address = "Please enter your pickup address.";
-    if (!schedule.preferred_date)   se.preferred_date  = "Preferred date is required.";
-    if (!schedule.time_slot_start)  se.time_slot_start = "Start time is required.";
-    if (!schedule.time_slot_end)    se.time_slot_end   = "End time is required.";
-    if (schedule.time_slot_start && schedule.time_slot_end &&
-        schedule.time_slot_start >= schedule.time_slot_end)
+    if (!schedule.preferred_date)
+      se.preferred_date = "Preferred date is required.";
+    if (!schedule.time_slot_start)
+      se.time_slot_start = "Start time is required.";
+    if (!schedule.time_slot_end)
+      se.time_slot_end = "End time is required.";
+    if (
+      schedule.time_slot_start &&
+      schedule.time_slot_end &&
+      schedule.time_slot_start >= schedule.time_slot_end
+    )
       se.time_slot_end = "End time must be after start time.";
 
     setScheduleErrs(se);
@@ -231,16 +232,24 @@ export default function Donor_Donate_Food() {
         }
       }
 
+      // ✅ For delivery, send the fixed warehouse address
+      if (schedule.mode === "delivery") {
+        fd.append("delivery_address", WAREHOUSE.address);
+      }
+
+      // Strip photo blobs from JSON payload, send files separately
       const itemsPayload = items.map(({ photo, photo_preview, ...rest }) => rest);
       fd.append("items", JSON.stringify(itemsPayload));
       items.forEach((it, idx) => {
         if (it.photo) fd.append(`photo_${idx}`, it.photo);
       });
 
-      await api.post("/donor/donations", fd, {
+      // ✅ Correct endpoint
+      await api.post("/donor/donations/food", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
+      // Cleanup object URLs
       items.forEach((it) => {
         if (it.photo_preview) URL.revokeObjectURL(it.photo_preview);
       });
@@ -250,15 +259,16 @@ export default function Donor_Donate_Food() {
       setSchedule(EMPTY_SCHEDULE);
       setMarkerPos(null);
       setMapCenter(DEFAULT_CENTER);
+
     } catch {
       setStatus("error");
     }
   };
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
-  const iErr    = (id, field) => itemErrs[id]?.[field];
-  const sErr    = (field)     => scheduleErrs[field];
-  const itemInp = (id, field) =>
+  // ── CSS helpers ──────────────────────────────────────────────────────────
+  const iErr     = (id, field) => itemErrs[id]?.[field];
+  const sErr     = (field)     => scheduleErrs[field];
+  const itemInp  = (id, field) =>
     `don-food-input${iErr(id, field) ? " don-food-input-err" : ""}`;
   const schedInp = (field) =>
     `don-food-sched-input${sErr(field) ? " don-food-sched-input-err" : ""}`;
@@ -283,7 +293,7 @@ export default function Donor_Donate_Food() {
           <hr className="don-food-page-divider" />
         </div>
 
-        {/* BODY: two columns */}
+        {/* BODY */}
         <div className="don-food-body">
 
           {/* ══ LEFT — Food Items ══ */}
@@ -335,16 +345,20 @@ export default function Donor_Donate_Food() {
                 </button>
               </div>
 
-              {/* Address section */}
+              {/* ✅ DELIVERY — show fixed warehouse address, no input needed */}
               {schedule.mode === "delivery" ? (
                 <div className="don-food-sched-field">
-                  <label className="don-food-sched-label">Warehouse Address</label>
+                  <label className="don-food-sched-label">Drop-off Address</label>
                   <div className="don-food-warehouse-addr-row">
                     <span className="material-symbols-rounded don-food-warehouse-icon">warehouse</span>
                     <p className="don-food-warehouse-addr">{WAREHOUSE.address}</p>
                   </div>
+                  <p style={{ fontSize: 11, color: "#888", margin: "4px 0 0" }}>
+                    Please bring your donation to this address on your selected date and time.
+                  </p>
                 </div>
               ) : (
+                // ✅ PICKUP — donor enters their address
                 <div className="don-food-sched-field">
                   <label className="don-food-sched-label">Pickup Address</label>
                   <div className="don-food-addr-input-wrap">
@@ -383,7 +397,7 @@ export default function Donor_Donate_Food() {
                 </div>
               )}
 
-              {/* ── GOOGLE MAP ── */}
+              {/* GOOGLE MAP */}
               <div className="don-food-map-placeholder">
                 {loadError && (
                   <div className="don-food-map-placeholder-badge">
@@ -391,14 +405,12 @@ export default function Donor_Donate_Food() {
                     Failed to load map
                   </div>
                 )}
-
                 {!loadError && !isLoaded && (
                   <div className="don-food-map-placeholder-badge">
                     <span className="material-symbols-rounded">map</span>
                     Loading map…
                   </div>
                 )}
-
                 {!loadError && isLoaded && (
                   <GoogleMap
                     mapContainerStyle={MAP_CONTAINER_STYLE}
@@ -406,39 +418,39 @@ export default function Donor_Donate_Food() {
                     zoom={markerPos ? 16 : 12}
                     onLoad={onMapLoad}
                     options={{
-                      streetViewControl: false,
-                      mapTypeControl: false,
-                      fullscreenControl: false,
+                      streetViewControl:  false,
+                      mapTypeControl:     false,
+                      fullscreenControl:  false,
                     }}
                   >
                     {markerPos && (
                       <Marker
                         position={markerPos}
+                        // ✅ Only draggable in pickup mode
                         draggable={schedule.mode === "pickup"}
                         onDragEnd={onMarkerDragEnd}
                         title={
                           schedule.mode === "pickup"
                             ? "Drag to adjust pickup location"
-                            : "Warehouse location"
+                            : "Drop-off warehouse location"
                         }
                       />
                     )}
                   </GoogleMap>
                 )}
-
                 {isLoaded && !markerPos && (
                   <div className="don-food-map-placeholder-badge">
                     <span className="material-symbols-rounded">map</span>
                     {schedule.mode === "pickup"
                       ? "Enter an address to see it on the map"
-                      : "Map will appear here"}
+                      : "Loading warehouse location…"}
                   </div>
                 )}
               </div>
 
-              {/* Hint text for draggable marker */}
+              {/* Drag hint — pickup only */}
               {isLoaded && markerPos && schedule.mode === "pickup" && (
-                <p style={{ fontSize: "11px", color: "#888", margin: "-4px 0 8px", textAlign: "center" }}>
+                <p style={{ fontSize: 11, color: "#888", margin: "-4px 0 8px", textAlign: "center" }}>
                   📍 Drag the pin to fine-tune your pickup location
                 </p>
               )}
@@ -454,6 +466,7 @@ export default function Donor_Donate_Food() {
                     name="preferred_date"
                     value={schedule.preferred_date}
                     onChange={schedChange}
+                    min={new Date().toISOString().split("T")[0]}
                   />
                   {sErr("preferred_date") && (
                     <span className="don-food-sched-err">{sErr("preferred_date")}</span>
@@ -493,23 +506,24 @@ export default function Donor_Donate_Food() {
 
         </div>
 
-        {/* STATUS */}
+        {/* STATUS MESSAGES */}
         {status === "success" && (
           <p className="don-food-status don-food-status-success">
-            ✓ Food donation submitted successfully!
+            ✓ Donation submitted! It is now under staff review and will be added to inventory once approved.
           </p>
         )}
         {status === "error" && (
           <p className="don-food-status don-food-status-error">
-            Something went wrong. Please try again.
+            ✗ Something went wrong. Please try again.
           </p>
         )}
 
-        {/* SUBMIT ROW */}
+        {/* ACTION BUTTONS */}
         <div className="don-food-submit-row">
           <button
             className="don-food-cancel-btn"
             onClick={() => navigate("/donor/donate")}
+            disabled={status === "loading"}
           >
             Cancel
           </button>
@@ -610,8 +624,11 @@ function FoodItemCard({
             type="date"
             value={item.expiration_date}
             onChange={(e) => onUpdate(item.id, "expiration_date", e.target.value)}
+            min={new Date().toISOString().split("T")[0]}
           />
-          {errors.expiration_date && <span className="don-food-item-err">{errors.expiration_date}</span>}
+          {errors.expiration_date && (
+            <span className="don-food-item-err">{errors.expiration_date}</span>
+          )}
         </div>
 
       </div>

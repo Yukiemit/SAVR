@@ -3,9 +3,9 @@ import { NavLink } from "react-router-dom";
 import api from "../services/api";
 
 const navItems = [
-  { label: "Dashboard",      path: "/beneficiary/dashboard"       },
-  { label: "Create Request", path: "/beneficiary/create-request"  },
-  { label: "Track Request",  path: "/beneficiary/track-request"   },
+  { label: "Dashboard",      path: "/beneficiary/dashboard"      },
+  { label: "Create Request", path: "/beneficiary/create-request" },
+  { label: "Track Request",  path: "/beneficiary/track-request"  },
 ];
 
 const iconConfig = (type) => {
@@ -29,7 +29,11 @@ const timeAgo = (dateStr) => {
 };
 
 export default function NavBar_Beneficiary() {
-  const [beneficiaryName, setBeneficiaryName] = useState("Beneficiary Name");
+  // ── Read user from localStorage (saved during login) ──────────────────────
+  const storedUser      = JSON.parse(localStorage.getItem("user") || "{}");
+  const storedName      = storedUser?.name || "Beneficiary";
+
+  const [beneficiaryName, setBeneficiaryName] = useState(storedName);
   const [bellOpen,        setBellOpen]        = useState(false);
   const [notifications,   setNotifications]   = useState([]);
   const [unreadCount,     setUnreadCount]     = useState(0);
@@ -38,22 +42,27 @@ export default function NavBar_Beneficiary() {
   const bellRef    = useRef(null);
   const profileRef = useRef(null);
 
-  // ── Fetch beneficiary profile ─────────────────────────────────────────────
-  // TODO (backend): GET /api/beneficiary/profile
-  // Returns: { name: string, email: string, organization: string }
+  // ── Fetch beneficiary profile from API to get first_name + last_name ──────
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await api.get("/beneficiary/profile");
-        setBeneficiaryName(res.data.name);
-      } catch (_) {}
+        const res  = await api.get("/beneficiary/profile");
+        const name = res.data.name
+          || `${res.data.first_name ?? ""} ${res.data.last_name ?? ""}`.trim()
+          || storedName;
+        setBeneficiaryName(name);
+
+        // Also update localStorage so it stays fresh
+        const updated = { ...storedUser, name };
+        localStorage.setItem("user", JSON.stringify(updated));
+      } catch (_) {
+        // Falls back to storedName already set in useState
+      }
     };
     fetchProfile();
   }, []);
 
   // ── Fetch notifications ───────────────────────────────────────────────────
-  // TODO (backend): GET /api/notifications
-  // Returns: [{ id, type, title, message, read_at, created_at }]
   const fetchNotifications = async () => {
     setNotifLoading(true);
     try {
@@ -70,18 +79,17 @@ export default function NavBar_Beneficiary() {
     return () => clearInterval(interval);
   }, []);
 
-  // ── Close panels on outside click ────────────────────────────────────────
+  // ── Close on outside click ────────────────────────────────────────────────
   useEffect(() => {
     const handleOutside = (e) => {
-      if (bellRef.current && !bellRef.current.contains(e.target))       setBellOpen(false);
+      if (bellRef.current    && !bellRef.current.contains(e.target))    setBellOpen(false);
       if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
     };
     document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
   }, []);
 
-  // ── Bell click — mark all read on open ───────────────────────────────────
-  // TODO (backend): POST /api/notifications/mark-all-read
+  // ── Bell click ────────────────────────────────────────────────────────────
   const handleBellClick = async () => {
     const opening = !bellOpen;
     setBellOpen(opening);
@@ -97,8 +105,7 @@ export default function NavBar_Beneficiary() {
     }
   };
 
-  // ── Mark single notification read ────────────────────────────────────────
-  // TODO (backend): POST /api/notifications/:id/mark-read
+  // ── Mark single read ──────────────────────────────────────────────────────
   const markRead = async (id) => {
     try {
       await api.post(`/notifications/${id}/mark-read`);
@@ -110,11 +117,11 @@ export default function NavBar_Beneficiary() {
   };
 
   // ── Logout ────────────────────────────────────────────────────────────────
-  // TODO (backend): POST /api/logout — invalidates the bearer token
   const handleLogout = async () => {
     try { await api.post("/logout"); } catch (_) {}
     localStorage.removeItem("token");
-    window.location.href = "/";
+    localStorage.removeItem("user"); // ← clear user too
+    window.location.href = "/login";
   };
 
   return (
@@ -141,7 +148,7 @@ export default function NavBar_Beneficiary() {
         ))}
       </ul>
 
-      {/* RIGHT SIDE: BELL + PROFILE */}
+      {/* RIGHT SIDE */}
       <div className="user-navbar-right">
 
         {/* NOTIFICATION BELL */}
@@ -169,7 +176,6 @@ export default function NavBar_Beneficiary() {
                   <span className="notif-panel-all-read">All caught up ✓</span>
                 )}
               </div>
-
               <ul className="notif-panel-list">
                 {notifLoading ? (
                   <li className="notif-panel-empty">Loading…</li>
@@ -188,11 +194,7 @@ export default function NavBar_Beneficiary() {
                         <div className="notif-panel-dot" style={{ background: cfg.bg }}>
                           <span
                             className="material-symbols-rounded"
-                            style={{
-                              fontSize: 16,
-                              color: "white",
-                              fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24",
-                            }}
+                            style={{ fontSize: 16, color: "white", fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
                           >
                             {cfg.icon}
                           </span>
@@ -208,7 +210,6 @@ export default function NavBar_Beneficiary() {
                   })
                 )}
               </ul>
-
               {notifications.length > 0 && (
                 <div className="notif-panel-footer">
                   <button
@@ -249,6 +250,7 @@ export default function NavBar_Beneficiary() {
           {profileOpen && (
             <div className="notif-panel" style={{ minWidth: 220 }}>
               <div className="notif-panel-header" style={{ flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
+                {/* ✅ Now shows real name from localStorage / API */}
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#222" }}>{beneficiaryName}</p>
                 <p style={{ margin: 0, fontSize: 11, color: "#aaa" }}>Beneficiary Account</p>
               </div>

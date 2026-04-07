@@ -20,17 +20,7 @@ const COUNT_BADGES = [
   { key: "food_angel",          label: "Food Angel",          threshold: 20, icon: "/images/badge_food_angel.png" },
 ];
 
-const DUMMY_STATS = { total_financial: 30000, total_food_count: 50, total_count: 7 };
-
-const DUMMY_DONATIONS = [
-  { id: 1, date: "Jan 15, 2025", type: "Financial", amount_items: "₱ 5,000",    status: "Completed" },
-  { id: 2, date: "Jan 15, 2025", type: "Food",      amount_items: "10 kg Rice", status: "Completed" },
-  { id: 3, date: "Jan 16, 2025", type: "Financial", amount_items: "₱ 10,000",   status: "Completed" },
-  { id: 4, date: "Feb 03, 2025", type: "Food",      amount_items: "5 kg Corn",  status: "Pending"   },
-  { id: 5, date: "Feb 20, 2025", type: "Service",   amount_items: "Transport",  status: "Completed" },
-  { id: 6, date: "Mar 01, 2025", type: "Financial", amount_items: "₱ 15,000",   status: "Completed" },
-  { id: 7, date: "Apr 01, 2025", type: "Food",      amount_items: "3 cans",     status: "Pending"   },
-];
+const DUMMY_STATS = { total_financial: 0, total_food_count: 0, total_count: 0 };
 
 const formatPeso = (v) => `₱ ${Number(v).toLocaleString()}`;
 
@@ -45,8 +35,13 @@ const getCurrentRange = (total) => {
   return { min: 0, max: 5000 };
 };
 
-const statusColor = (s) =>
-  s === "Completed" ? "#2e7d32" : s === "Pending" ? "#f4b942" : "#c96a2e";
+const statusColor = (s) => {
+  const lower = (s || "").toLowerCase();
+  if (lower === "approved")  return "#2e7d32";
+  if (lower === "pending")   return "#f4b942";
+  if (lower === "rejected")  return "#e53935";
+  return "#888";
+};
 
 export default function Donor_Dashboard() {
   const navigate = useNavigate();
@@ -78,19 +73,22 @@ export default function Donor_Dashboard() {
           api.get("/donor/stats"),
           api.get("/donor/donations"),
         ]);
-        setTotalFinancial(statsRes.data.total_financial  ?? DUMMY_STATS.total_financial);
-        setTotalFoodCount(statsRes.data.total_food_count ?? DUMMY_STATS.total_food_count);
-        setDonationCount(statsRes.data.total_count       ?? DUMMY_STATS.total_count);
-        setDonations(donationsRes.data                   || DUMMY_DONATIONS);
-        prevFinancialRef.current = statsRes.data.total_financial ?? DUMMY_STATS.total_financial;
-        prevCountRef.current     = statsRes.data.total_count     ?? DUMMY_STATS.total_count;
+        const financial  = statsRes.data.total_financial  ?? 0;
+        const foodCount  = statsRes.data.total_food_count ?? 0;
+        const totalCount = statsRes.data.total_count      ?? 0;
+        setTotalFinancial(financial);
+        setTotalFoodCount(foodCount);
+        setDonationCount(totalCount);
+        setDonations(donationsRes.data || []);
+        prevFinancialRef.current = financial;
+        prevCountRef.current     = totalCount;
       } catch {
-        setTotalFinancial(DUMMY_STATS.total_financial);
-        setTotalFoodCount(DUMMY_STATS.total_food_count);
-        setDonationCount(DUMMY_STATS.total_count);
-        setDonations(DUMMY_DONATIONS);
-        prevFinancialRef.current = DUMMY_STATS.total_financial;
-        prevCountRef.current     = DUMMY_STATS.total_count;
+        setTotalFinancial(0);
+        setTotalFoodCount(0);
+        setDonationCount(0);
+        setDonations([]);
+        prevFinancialRef.current = 0;
+        prevCountRef.current     = 0;
       } finally {
         setLoading(false);
       }
@@ -103,8 +101,8 @@ export default function Donor_Dashboard() {
     try {
       const params = { type: filterType, range: filterRange, ...(filterRange === "custom" && { from: customFrom, to: customTo }) };
       const res = await api.get("/donor/donations", { params });
-      setDonations(res.data || DUMMY_DONATIONS);
-    } catch { setDonations(DUMMY_DONATIONS); }
+      setDonations(res.data || []);
+    } catch { setDonations([]); }
     finally { setReportLoading(false); }
   };
 

@@ -4,7 +4,7 @@ import api from "../services/api";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: "", password: "", remember: false });
+  const [form, setForm] = useState({ identifier: "", password: "", remember: false });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -17,10 +17,15 @@ export default function Login() {
 
   const validate = () => {
     const newErrors = {};
-    if (!form.email.trim()) {
-      newErrors.email = "Email is required.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      newErrors.email = "Enter a valid email address.";
+    if (!form.identifier.trim()) {
+      newErrors.identifier = "Email or is required.";
+    }
+    // ✅ Only validate email format if it looks like an email
+    else if (
+      form.identifier.includes("@") &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.identifier)
+    ) {
+      newErrors.identifier = "Enter a valid email address.";
     }
     if (!form.password) newErrors.password = "Password is required.";
     return newErrors;
@@ -35,17 +40,16 @@ export default function Login() {
 
     try {
       const res = await api.post("/login", {
-        identifier: form.email,
-        password: form.password,
-        remember: form.remember,
+        identifier: form.identifier,
+        password:   form.password,
+        remember:   form.remember,
       });
 
       const { token, role, user } = res.data;
 
-      // ✅ SAVE ALL THREE TO localStorage
       localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-      localStorage.setItem("role", role);
+      localStorage.setItem("user",  JSON.stringify(user));
+      localStorage.setItem("role",  role);
 
       if (role === "admin")             navigate("/admin/dashboard");
       else if (role === "staff")        navigate("/staff/dashboard");
@@ -54,7 +58,7 @@ export default function Login() {
       else if (role === "organization") navigate("/org/dashboard");
 
     } catch (err) {
-      const status = err.response?.status;
+      const status  = err.response?.status;
       const message = err.response?.data?.message;
 
       if (status === 403 && message?.includes("verify")) {
@@ -63,7 +67,7 @@ export default function Login() {
       } else if (status === 403) {
         setErrors({ general: message || "Access denied." });
       } else if (status === 401 || status === 422) {
-        setErrors({ general: "Invalid email or password. Please try again." });
+        setErrors({ general: "Invalid credentials. Please try again." });
       } else {
         setErrors({ general: "Something went wrong. Please try again later." });
       }
@@ -83,7 +87,7 @@ export default function Login() {
           <img src="/images/logobrown.png" alt="Logo" style={{ height: "40px" }} />
         </div>
         <div className="nav-links">
-          <a href="/home">Home</a>
+          <a href="/">Home</a>
           <a href="/about">About</a>
           <a href="/partners">Partners</a>
           <a href="/media">Media</a>
@@ -108,20 +112,22 @@ export default function Login() {
             </div>
           )}
 
+          {/* ✅ Changed: label + field name is now "identifier" */}
           <div className="login-field">
             <label className="reg-label">Email</label>
             <div className="reg-password-wrap">
               <input
-                name="email"
-                value={form.email}
-                placeholder="Email"
-                className={`reg-input ${errors.email ? "reg-input-error" : ""}`}
+                type="text"
+                name="identifier"
+                value={form.identifier}
+                placeholder="Enter your email"
+                className={`reg-input ${errors.identifier ? "reg-input-error" : ""}`}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
-                autoComplete="email"
+                autoComplete="username"
               />
             </div>
-            {errors.email && <p className="login-field-error">{errors.email}</p>}
+            {errors.identifier && <p className="login-field-error">{errors.identifier}</p>}
           </div>
 
           <div className="login-field">
