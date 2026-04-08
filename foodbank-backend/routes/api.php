@@ -8,6 +8,7 @@ use App\Http\Controllers\BeneficiaryController;
 use App\Http\Controllers\FoodDonationController;
 use App\Http\Controllers\FinancialDonationController;
 use App\Http\Controllers\DonorController;
+use App\Http\Controllers\ServiceDonationController;
 
 // ── AUTH ROUTES ──────────────────────────────────────────────────────────────
 Route::post('/register',         [AuthController::class, 'register']);
@@ -36,6 +37,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/donor/donations/food', [FoodDonationController::class, 'store']);
     Route::get('/donor/donations/food',  [FoodDonationController::class, 'index']);
 
+    // ── Donor — Service Donation (pending staff approval) ────────────────────
+    Route::post('/donor/donations/service', [ServiceDonationController::class, 'store']);
+    Route::get('/donor/donations/service',  [ServiceDonationController::class, 'index']);
+
     // ── Donor — Financial Donation: Manual (receipt upload → staff reviews) ──
     Route::post('/donor/donations',               [FinancialDonationController::class, 'store']);
     Route::get('/donor/donations/financial',      [FinancialDonationController::class, 'index']);
@@ -54,6 +59,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/staff/financial-donation-records/stats',         [FinancialDonationController::class, 'getRecordStats']);
     Route::post('/staff/financial-donation-records/{id}/approve', [FinancialDonationController::class, 'approveRecord']);
     Route::post('/staff/financial-donation-records/{id}/reject',  [FinancialDonationController::class, 'rejectRecord']);
+
+    // ── Staff — Service Donation Records ─────────────────────────────────────
+    Route::get('/staff/service-donation-records',               [ServiceDonationController::class, 'getRecords']);
+    Route::get('/staff/service-donation-records/stats',         [ServiceDonationController::class, 'getRecordStats']);
+    Route::post('/staff/service-donation-records/{id}/approve', [ServiceDonationController::class, 'approveRecord']);
+    Route::post('/staff/service-donation-records/{id}/reject',  [ServiceDonationController::class, 'rejectRecord']);
 
     // ── Donor pickup stubs (route exists, feature not yet built) ────────────
     Route::get('/donor/pickups',        fn() => response()->json([]));

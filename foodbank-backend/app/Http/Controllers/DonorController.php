@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\FinancialDonation;
 use App\Models\FinancialDonationRecord;
 use App\Models\FoodDonationRecord;
+use App\Models\ServiceDonationRecord;
 
 class DonorController extends Controller
 {
@@ -26,14 +27,21 @@ class DonorController extends Controller
             ->where('status', 'approved')
             ->count();
 
-        // Total count: all submissions (pending + approved + rejected) across both types
+        // Total service: count of approved service donation records
+        $totalServiceCount = ServiceDonationRecord::where('user_id', $userId)
+            ->where('status', 'approved')
+            ->count();
+
+        // Total count: all submissions across all types
         $financialCount = FinancialDonationRecord::where('user_id', $userId)->count();
         $foodCount      = FoodDonationRecord::where('user_id', $userId)->count();
+        $serviceCount   = ServiceDonationRecord::where('user_id', $userId)->count();
 
         return response()->json([
-            'total_financial'  => (float) $totalFinancial,
-            'total_food_count' => $totalFoodCount,
-            'total_count'      => $financialCount + $foodCount,
+            'total_financial'     => (float) $totalFinancial,
+            'total_food_count'    => $totalFoodCount,
+            'total_service_count' => $totalServiceCount,
+            'total_count'         => $financialCount + $foodCount + $serviceCount,
         ]);
     }
 
@@ -93,6 +101,23 @@ class DonorController extends Controller
                         'raw_date'     => $r->created_at,
                     ];
                 })
+            );
+        }
+
+        // ── Service donation records ─────────────────────────────────────────
+        if ($type === 'All' || $type === 'Service') {
+            $query = ServiceDonationRecord::where('user_id', $userId);
+            $query = $this->applyDateFilter($query, 'created_at', $range, $from, $to);
+
+            $rows = $rows->merge(
+                $query->get()->map(fn ($r) => [
+                    'id'           => 'svc-' . $r->id,
+                    'date'         => $r->created_at->format('M d, Y'),
+                    'type'         => 'Service',
+                    'amount_items' => $r->service_type . ' ×' . $r->quantity,
+                    'status'       => ucfirst($r->status),
+                    'raw_date'     => $r->created_at,
+                ])
             );
         }
 

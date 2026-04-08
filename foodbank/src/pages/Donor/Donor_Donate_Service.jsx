@@ -152,7 +152,7 @@ export default function Donor_DonateService() {
         notes:        form.notes,
       };
 
-      await api.post("/donor/donations", payload);
+      await api.post("/donor/donations/service", payload);
       setStatus("success");
       setForm(EMPTY_FORM);
     } catch {
