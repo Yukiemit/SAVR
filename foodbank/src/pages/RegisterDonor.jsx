@@ -459,7 +459,7 @@ export default function RegisterDonor() {
     return (
       <div className="bg-foodbank">
         <div className="form-card fade-in text-center">
-          <img src="/images/logobrown.png" alt="FoodBank Logo" className="w-48 mx-auto mb-4" />
+          <img src="/images/logoo.png" alt="FoodBank Logo" className="w-48 mx-auto mb-4" />
           <h2 className="form-title">🎉 Account Verified!</h2>
           <p className="form-subtitle">Your email has been verified. You can now log in.</p>
           <a href="/login" className="btn-register mt-4 inline-block">Go to Login</a>
@@ -475,7 +475,7 @@ export default function RegisterDonor() {
       {/* NAVBAR */}
       <nav className="navbar">
         <div className="logo">
-          <img src="/images/logobrown.png" alt="Logo" style={{ height: "40px" }} />
+          <img src="/images/logoo.png" alt="Logo" style={{ height: "40px" }} />
         </div>
         <div className="nav-links">
           <a href="/home">Home</a>

@@ -84,7 +84,7 @@ export default function Login() {
     <div className="reg-main-bg">
       <nav className="navbar">
         <div className="logo">
-          <img src="/images/logobrown.png" alt="Logo" style={{ height: "40px" }} />
+          <img src="/images/logoo.png" alt="Logo" style={{ height: "40px" }} />
         </div>
         <div className="nav-links">
           <a href="/">Home</a>

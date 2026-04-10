@@ -41,12 +41,13 @@ export default function NavBar_Donor() {
   const bellRef    = useRef(null);
   const profileRef = useRef(null);
 
-  // ── Fetch donor profile from API to keep name fresh ───────────────────────
+  // ── Fetch donor profile from API to keep name fresh ──────────────────────
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res  = await api.get("/donor/profile");
         const name = res.data.name
+          || res.data.org_name
           || `${res.data.first_name ?? ""} ${res.data.last_name ?? ""}`.trim()
           || storedName;
         setDonorName(name);
@@ -110,6 +111,17 @@ export default function NavBar_Donor() {
     } catch (_) {}
   };
 
+  // ── Profile navigation — role-based ──────────────────────────────────────
+  const handleProfileClick = () => {
+    const role = localStorage.getItem("role");
+    if (role === "donor_organization") {
+      window.location.href = "/donor/profile/organization";
+    } else {
+      window.location.href = "/donor/profile/individual";
+    }
+    setProfileOpen(false);
+  };
+
   // ── Logout ────────────────────────────────────────────────────────────────
   const handleLogout = async () => {
     try { await api.post("/logout"); } catch (_) {}
@@ -118,6 +130,10 @@ export default function NavBar_Donor() {
     localStorage.removeItem("role");
     window.location.href = "/";
   };
+
+  // ── Role label ────────────────────────────────────────────────────────────
+  const role     = localStorage.getItem("role");
+  const roleLabel = role === "donor_organization" ? "Organization Donor" : "Individual Donor";
 
   return (
     <nav className="user-navbar">
@@ -239,12 +255,14 @@ export default function NavBar_Donor() {
             <div className="notif-panel" style={{ minWidth: 220 }}>
               <div className="notif-panel-header" style={{ flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#222" }}>{donorName}</p>
-                <p style={{ margin: 0, fontSize: 11, color: "#aaa" }}>Donor Account</p>
+                <p style={{ margin: 0, fontSize: 11, color: "#aaa" }}>{roleLabel}</p>
               </div>
               <ul className="notif-panel-list" style={{ padding: "6px 0" }}>
+
+                {/* MY PROFILE */}
                 <li
                   className="notif-panel-item"
-                  onClick={() => { window.location.href = "/donor/profile"; setProfileOpen(false); }}
+                  onClick={handleProfileClick}
                   style={{ cursor: "pointer" }}
                 >
                   <div className="notif-panel-dot" style={{ background: "#2e7d32" }}>
@@ -257,6 +275,8 @@ export default function NavBar_Donor() {
                     <p className="notif-panel-desc">View and edit your details</p>
                   </div>
                 </li>
+
+                {/* LOGOUT */}
                 <li
                   className="notif-panel-item"
                   onClick={handleLogout}
@@ -272,6 +292,7 @@ export default function NavBar_Donor() {
                     <p className="notif-panel-desc">Sign out of your account</p>
                   </div>
                 </li>
+
               </ul>
             </div>
           )}

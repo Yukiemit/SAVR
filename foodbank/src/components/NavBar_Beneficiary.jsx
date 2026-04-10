@@ -29,9 +29,8 @@ const timeAgo = (dateStr) => {
 };
 
 export default function NavBar_Beneficiary() {
-  // ── Read user from localStorage (saved during login) ──────────────────────
-  const storedUser      = JSON.parse(localStorage.getItem("user") || "{}");
-  const storedName      = storedUser?.name || "Beneficiary";
+  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const storedName = storedUser?.name || "Beneficiary";
 
   const [beneficiaryName, setBeneficiaryName] = useState(storedName);
   const [bellOpen,        setBellOpen]        = useState(false);
@@ -42,22 +41,18 @@ export default function NavBar_Beneficiary() {
   const bellRef    = useRef(null);
   const profileRef = useRef(null);
 
-  // ── Fetch beneficiary profile from API to get first_name + last_name ──────
+  // ── Fetch beneficiary profile from API to keep name fresh ────────────────
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res  = await api.get("/beneficiary/profile");
         const name = res.data.name
+          || res.data.org_name
           || `${res.data.first_name ?? ""} ${res.data.last_name ?? ""}`.trim()
           || storedName;
         setBeneficiaryName(name);
-
-        // Also update localStorage so it stays fresh
-        const updated = { ...storedUser, name };
-        localStorage.setItem("user", JSON.stringify(updated));
-      } catch (_) {
-        // Falls back to storedName already set in useState
-      }
+        localStorage.setItem("user", JSON.stringify({ ...storedUser, name }));
+      } catch (_) {}
     };
     fetchProfile();
   }, []);
@@ -116,13 +111,29 @@ export default function NavBar_Beneficiary() {
     } catch (_) {}
   };
 
+  // ── Profile navigation — role-based ──────────────────────────────────────
+  const handleProfileClick = () => {
+    const role = localStorage.getItem("role");
+    if (role === "beneficiary_organization") {
+      window.location.href = "/beneficiary/profile/organization";
+    } else {
+      window.location.href = "/beneficiary/profile/individual";
+    }
+    setProfileOpen(false);
+  };
+
   // ── Logout ────────────────────────────────────────────────────────────────
   const handleLogout = async () => {
     try { await api.post("/logout"); } catch (_) {}
     localStorage.removeItem("token");
-    localStorage.removeItem("user"); // ← clear user too
-    window.location.href = "/login";
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    window.location.href = "/";
   };
+
+  // ── Role label ────────────────────────────────────────────────────────────
+  const role      = localStorage.getItem("role");
+  const roleLabel = role === "beneficiary_organization" ? "Organization Beneficiary" : "Individual Beneficiary";
 
   return (
     <nav className="user-navbar">
@@ -250,14 +261,15 @@ export default function NavBar_Beneficiary() {
           {profileOpen && (
             <div className="notif-panel" style={{ minWidth: 220 }}>
               <div className="notif-panel-header" style={{ flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
-                {/* ✅ Now shows real name from localStorage / API */}
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: "#222" }}>{beneficiaryName}</p>
-                <p style={{ margin: 0, fontSize: 11, color: "#aaa" }}>Beneficiary Account</p>
+                <p style={{ margin: 0, fontSize: 11, color: "#aaa" }}>{roleLabel}</p>
               </div>
               <ul className="notif-panel-list" style={{ padding: "6px 0" }}>
+
+                {/* MY PROFILE */}
                 <li
                   className="notif-panel-item"
-                  onClick={() => { window.location.href = "/beneficiary/profile"; setProfileOpen(false); }}
+                  onClick={handleProfileClick}
                   style={{ cursor: "pointer" }}
                 >
                   <div className="notif-panel-dot" style={{ background: "#2e7d32" }}>
@@ -270,6 +282,8 @@ export default function NavBar_Beneficiary() {
                     <p className="notif-panel-desc">View and edit your details</p>
                   </div>
                 </li>
+
+                {/* LOGOUT */}
                 <li
                   className="notif-panel-item"
                   onClick={handleLogout}
@@ -285,6 +299,7 @@ export default function NavBar_Beneficiary() {
                     <p className="notif-panel-desc">Sign out of your account</p>
                   </div>
                 </li>
+
               </ul>
             </div>
           )}

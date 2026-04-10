@@ -15,6 +15,7 @@ export default function Donor_Donate_Financial() {
   const [message,        setMessage]        = useState("");
   const [errors,         setErrors]         = useState({});
   const [status,         setStatus]         = useState(null);
+  const [showPopup,      setShowPopup]      = useState(false);
 
   // Preset takes priority over custom input
   const effectiveAmount = selectedPreset ?? (customAmount ? Number(customAmount) : null);
@@ -50,10 +51,12 @@ export default function Donor_Donate_Financial() {
       window.location.href = res.data.checkout_url;
     } catch {
       setStatus("error");
+      setShowPopup(true);
+      setTimeout(() => setShowPopup(false), 4000);
     }
   };
 
-  // ── Shared field style (inside amber card) ────────────────────────────────
+  // ── Shared field style (inside green card) ────────────────────────────────
   const fieldInput = (hasErr = false) => ({
     width: "100%",
     padding: "12px 16px",
@@ -69,7 +72,7 @@ export default function Donor_Donate_Financial() {
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f0e8", fontFamily: "inherit" }}>
+    <div style={{ minHeight: "100vh", background: "#f9f9f7", fontFamily: "inherit" }}>
       <NavBar_Donor />
 
       <main style={{ padding: "0 24px 60px" }}>
@@ -78,22 +81,22 @@ export default function Donor_Donate_Financial() {
         <div style={{ textAlign: "center", padding: "36px 0 24px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
             <img
-              src="/images/Donor_Financial.png"
+              src="/images/Donor_Financial_Dark.png"
               alt="Financial Donation"
-              style={{ width: 44, height: 44, objectFit: "contain" }}
+              className="don-svc-title-icon"
             />
-            <h1 style={{ fontSize: 32, fontWeight: 900, color: "#1a1a1a", margin: 0, letterSpacing: 0.5 }}>
+            <h1 className="don-svc-page-title">
               Financial Donation
             </h1>
           </div>
           <hr style={{ border: "none", borderTop: "1.5px solid #ddd", margin: "20px auto 0", maxWidth: 900 }} />
         </div>
 
-        {/* ── AMBER CARD ── */}
+        {/* ── GREEN CARD ── */}
         <div style={{
           maxWidth: 720,
           margin: "0 auto",
-          background: "#f0b429",
+          background: "linear-gradient(145deg, #2e7d32, #1b5e20)",
           borderRadius: 20,
           padding: "32px 36px 36px",
         }}>
@@ -209,18 +212,26 @@ export default function Donor_Donate_Financial() {
             }}
           />
 
-        </div>
-        {/* end amber card */}
+          <style>
+            {`
+              textarea::placeholder {
+                color: rgba(255, 255, 255, 0.65) !important;
+                font-weight: 400;
+                font-style: italic;
+              }
+              input::placeholder {
+                color: rgba(255, 255, 255, 0.65) !important;
+              }
+            `}
+          </style>
 
-        {/* ── STATUS ── */}
+        </div>
+        {/* end green card */}
+
+        {/* ── STATUS (redirecting only — error uses popup) ── */}
         {status === "redirecting" && (
           <p style={{ textAlign: "center", color: "#c96a2e", fontWeight: 600, fontSize: 14, marginTop: 16 }}>
             ⏳ Preparing your PayMongo checkout… please wait.
-          </p>
-        )}
-        {status === "error" && (
-          <p style={{ textAlign: "center", color: "#e53935", fontWeight: 600, fontSize: 14, marginTop: 16 }}>
-            Something went wrong. Please try again.
           </p>
         )}
 
@@ -250,7 +261,7 @@ export default function Donor_Donate_Financial() {
               padding: "13px 40px",
               borderRadius: 50,
               border: "none",
-              background: status === "redirecting" ? "#aaa" : "#2d5a27",
+              background: status === "redirecting" ? "#aaa" : "#c96a2e",
               color: "#fff",
               fontSize: 15,
               fontWeight: 800,
@@ -264,6 +275,24 @@ export default function Donor_Donate_Financial() {
         </div>
 
       </main>
+
+      {/* ── FEEDBACK POPUP ── */}
+      {showPopup && (
+        <div className="don-food-popup-overlay" onClick={() => setShowPopup(false)}>
+          <div
+            className="don-food-popup-box don-food-popup-error"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="don-food-popup-icon">✕</div>
+            <div className="don-food-popup-content">
+              <p className="don-food-popup-title">Submission Failed</p>
+              <p className="don-food-popup-msg">Something went wrong. Please try again.</p>
+            </div>
+            <button className="don-food-popup-close" onClick={() => setShowPopup(false)}>✕</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

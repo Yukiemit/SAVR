@@ -85,6 +85,27 @@ export default function NavBar_Staff() {
     return () => clearInterval(interval);
   }, []);
 
+  // Handle clicking outside dropdowns
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      // Don't close if clicking on a dropdown trigger
+      const isTrigger = e.target.closest('.user-nav-link');
+      if (!isTrigger) {
+        setOpenMenu(null);
+      }
+    };
+    
+    if (openMenu) {
+      // Use setTimeout to avoid immediate close on click
+      setTimeout(() => {
+        document.addEventListener("click", handleClickOutside);
+      }, 0);
+    }
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [openMenu]);
+
   useEffect(() => {
     const handleOutside = (e) => {
       if (bellRef.current && !bellRef.current.contains(e.target)) {
@@ -128,6 +149,10 @@ export default function NavBar_Staff() {
   const isParentActive = (children) =>
     children?.some((child) => location.pathname.startsWith(child.path));
 
+  const toggleDropdown = (label) => {
+    setOpenMenu(openMenu === label ? null : label);
+  };
+
   return (
     <nav className="user-navbar">
 
@@ -146,11 +171,16 @@ export default function NavBar_Staff() {
             <li
               key={item.label}
               className="user-nav-item"
-              onMouseEnter={() => hasChildren && setOpenMenu(item.label)}
-              onMouseLeave={() => hasChildren && setOpenMenu(null)}
             >
               {hasChildren ? (
-                <span className={`user-nav-link ${parentActive ? "user-nav-active" : ""}`}>
+                <span 
+                  className={`user-nav-link ${parentActive ? "user-nav-active" : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleDropdown(item.label);
+                  }}
+                  style={{ cursor: "pointer" }}
+                >
                   {item.label}
                 </span>
               ) : (
@@ -171,6 +201,7 @@ export default function NavBar_Staff() {
                         className={({ isActive }) =>
                           `user-dropdown-item ${isActive ? "user-dropdown-active" : ""}`
                         }
+                        onClick={() => setOpenMenu(null)}
                       >
                         {child.label}
                       </NavLink>
