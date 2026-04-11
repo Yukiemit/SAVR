@@ -3935,6 +3935,632 @@ body {
   }
 }
 
+/* /-/-/-/-/-/-/-/ STAFF : SERVICE APPROVAL /-/-/-/-/-/-/-/ */
+
+/* ── WRAPPER ── */
+.ssa-wrapper {
+  min-height: 100vh;
+  background: #f9f9f7;
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── MAIN ── */
+.ssa-main {
+  flex: 1;
+  padding: 36px 50px 60px;
+  box-sizing: border-box;
+}
+
+/* ── PAGE HEADER ── */
+.ssa-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.ssa-page-title {
+  font-size: 36px;
+  font-weight: 900;
+  color: #222;
+  margin: 0 0 4px;
+}
+
+.ssa-page-sub {
+  font-size: 14px;
+  color: #888;
+  margin: 0;
+}
+
+/* ── COUNTERS ── */
+.ssa-counters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ssa-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 28px;
+  border-radius: 16px;
+  min-width: 80px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.ssa-counter-pending  { background: #555;     color: white; }
+.ssa-counter-accepted { background: #2e7d32;  color: white; }
+.ssa-counter-declined { background: #c0392b;  color: white; }
+
+.ssa-counter-num {
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.ssa-counter-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-top: 3px;
+  opacity: 0.90;
+}
+
+/* ── TOOLBAR ── */
+.ssa-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+
+/* ── FILTER GROUPS ── */
+.ssa-filter-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ssa-filter-group p{
+  color: #555;
+  size: 10px;
+  font-style: italic;
+}
+
+.ssa-filter-tab {
+  padding: 8px 20px;
+  border-radius: 20px;
+  border: 1px solid #ddd;
+  background: white;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.ssa-filter-tab:hover {
+  border-color: #f4b942;
+  color: #222;
+}
+
+/* Status active = yellow */
+.ssa-filter-tab-active {
+  background: #f4b942 !important;
+  border-color: #f4b942 !important;
+  color: #000 !important;
+  font-weight: 700 !important;
+}
+
+/* Type active = green */
+.ssa-filter-tab-type {
+  background: #2e7d32 !important;
+  border-color: #2e7d32 !important;
+  color: white !important;
+  font-weight: 700 !important;
+}
+
+/* ── SEARCH ── */
+.ssa-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.ssa-search {
+  padding: 10px 44px 10px 18px;
+  border: 1px solid #ddd;
+  border-radius: 30px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  width: 260px;
+  background: white;
+  transition: border-color 0.2s;
+}
+
+.ssa-search:focus {
+  border-color: #2e7d32;
+}
+
+.ssa-search-icon {
+  position: absolute;
+  right: 14px;
+  font-size: 20px;
+  color: #aaa;
+  pointer-events: none;
+}
+
+/* ── CARDS GRID ── */
+.ssa-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 1200px) { .ssa-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 700px)  { .ssa-grid { grid-template-columns: 1fr; } }
+
+/* ── CARD ── */
+.ssa-card {
+  background: white;
+  border-radius: 18px;
+  padding: 18px 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1.5px solid #eee;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+}
+
+.ssa-card:hover {
+  box-shadow: 0 8px 28px rgba(0,0,0,0.10);
+  transform: translateY(-3px);
+  border-color: #ddd;
+}
+
+.ssa-card-pending {
+  border-left: 4px solid #f4b942;
+}
+
+/* ── CARD HEADER ── */
+.ssa-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ssa-card-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #222;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+/* ── BADGES ── */
+.ssa-type-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.ssa-status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* ── CARD META ── */
+.ssa-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ssa-card-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.ssa-card-key {
+  font-weight: 700;
+  color: #888;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ssa-card-val {
+  color: #333;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+/* ── CATEGORIES BOX ── */
+.ssa-card-categories-box,
+.ssa-card-notes-box {
+  background: #f9f9f7;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-height: 48px;
+}
+
+.ssa-card-categories-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #aaa;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ssa-card-categories-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.ssa-category-pill {
+  background: #eee;
+  color: #555;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.ssa-card-categories-empty {
+  font-size: 12px;
+  color: #bbb;
+  font-style: italic;
+}
+
+/* ── NOTES BOX ── */
+.ssa-card-notes-text {
+  font-size: 12px;
+  color: #555;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── CARD FOOTER ── */
+.ssa-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.ssa-card-time {
+  font-size: 11px;
+  color: #bbb;
+  font-weight: 600;
+}
+
+.ssa-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── ACTION BUTTONS ── */
+.ssa-decline-btn {
+  background: white;
+  border: 1.5px solid #ddd;
+  border-radius: 20px;
+  padding: 7px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #888;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.ssa-decline-btn:hover:not(:disabled) {
+  border-color: #c0392b;
+  color: #c0392b;
+  background: #fdecea;
+}
+
+.ssa-decline-btn:disabled {
+  opacity: 0.40;
+  cursor: not-allowed;
+}
+
+.ssa-accept-btn {
+  background: #2e7d32;
+  border: none;
+  border-radius: 20px;
+  padding: 7px 20px;
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s, transform 0.15s;
+  box-shadow: 0 3px 10px rgba(46,125,50,0.25);
+}
+
+.ssa-accept-btn:hover:not(:disabled) {
+  background: #1b5e20;
+  transform: scale(1.03);
+}
+
+.ssa-accept-btn:disabled {
+  background: #aaa;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── EMPTY STATE ── */
+.ssa-empty {
+  text-align: center;
+  font-size: 14px;
+  color: #aaa;
+  font-style: italic;
+  margin-top: 60px;
+}
+
+/* ── TOAST ── */
+.ssa-toast {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.18);
+  animation: ssa-toast-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes ssa-toast-in {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.ssa-toast-success {
+  background: #2e7d32;
+  color: white;
+}
+
+.ssa-toast-error {
+  background: #c0392b;
+  color: white;
+}
+
+/* ── OVERLAY ── */
+.ssa-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: ssa-fade 0.2s ease;
+}
+
+@keyframes ssa-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── MODAL ── */
+.ssa-modal {
+  background: white;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.22);
+  animation: ssa-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes ssa-pop {
+  from { transform: scale(0.88); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.ssa-modal::-webkit-scrollbar       { width: 4px; }
+.ssa-modal::-webkit-scrollbar-thumb { background: #ddd; border-radius: 999px; }
+
+/* ── MODAL HEADER ── */
+.ssa-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 28px 16px;
+}
+
+.ssa-modal-type-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ssa-modal-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: #222;
+  margin: 0 0 2px;
+}
+
+.ssa-modal-sub {
+  font-size: 12px;
+  color: #aaa;
+  margin: 0;
+}
+
+.ssa-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #aaa;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 8px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.ssa-modal-close:hover {
+  color: #c0392b;
+  background: #fdecea;
+}
+
+.ssa-modal-close .material-symbols-rounded {
+  font-size: 22px;
+}
+
+/* ── MODAL DIVIDER ── */
+.ssa-modal-divider {
+  border: none;
+  border-top: 1px solid #f0f0f0;
+  margin: 0;
+}
+
+/* ── MODAL BODY ── */
+.ssa-modal-body {
+  padding: 20px 28px;
+  flex: 1;
+}
+
+.ssa-modal-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: #aaa;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* ── MODAL GRID ── */
+.ssa-modal-grid {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.ssa-modal-key {
+  font-size: 12px;
+  font-weight: 700;
+  color: #888;
+  align-self: start;
+  padding-top: 1px;
+}
+
+.ssa-modal-val {
+  font-size: 13px;
+  color: #222;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* ── MODAL NOTES ── */
+.ssa-modal-notes {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.6;
+  background: #f9f9f7;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 0;
+}
+
+/* ── MODAL FOOTER ── */
+.ssa-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px 24px;
+  border-top: 1px solid #f0f0f0;
+  gap: 12px;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .ssa-main {
+    padding: 24px 16px 40px;
+  }
+
+  .ssa-page-header {
+    flex-direction: column;
+  }
+
+  .ssa-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ssa-search-wrap {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .ssa-search {
+    width: 100%;
+  }
+
+  .ssa-modal-grid {
+    grid-template-columns: 110px 1fr;
+  }
+
+  .ssa-modal-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .ssa-accept-btn,
+  .ssa-decline-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
 
 /* /-/-/-/-/-/-/-/ DONOR : DASHBOARD /-/-/-/-/-/-/-/ */
 

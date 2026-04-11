@@ -15,6 +15,7 @@ const navItems = [
     label: "Operations",
     children: [
       { label: "Journey Tracker",     path: "/staff/operations/journey-tracker" },
+      { label: "Service Approval",   path: "/staff/operations/service-approval" },
       { label: "Truck Optimization",  path: "/staff/operations/truck-optimization" },
     ],
   },
