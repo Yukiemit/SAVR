@@ -18,6 +18,7 @@ import StaffDashboard from "./pages/Staff/Staff_Dashboard";
 import StaffDonationRequest from "./pages/Staff/Staff_DonationRequest";
 import StaffDonationDrive from "./pages/Staff/Staff_DonationDrive";
 import StaffServiceApproval from "./pages/Staff/Staff_ServiceApproval";
+import StaffDonationJourneyTracker from "./pages/Staff/Staff_DonationJourneyTracker"
 
 import DonorDashboard from "./pages/Donor/Donor_Dashboard";
 import DonorProfileIndividual from "./pages/Donor/Donor_ProfileIndividual";
@@ -90,6 +91,11 @@ function App() {
           <Route path="/staff/operations/service-approval" element={
             <ProtectedRoute allowedRoles={["staff"]}>
               <StaffServiceApproval />
+            </ProtectedRoute>
+          } />
+          <Route path="/staff/operations/journey-tracker" element={
+            <ProtectedRoute allowedRoles={["staff"]}>
+              <StaffDonationJourneyTracker />
             </ProtectedRoute>
           } />
 
