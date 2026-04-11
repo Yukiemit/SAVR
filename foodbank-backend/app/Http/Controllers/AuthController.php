@@ -291,11 +291,22 @@ class AuthController extends Controller
         // ✅ FIXED: generate Sanctum token
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        // Detect individual vs organization sub-type
+        $subType = 'individual';
+        if ($user->role === 'donor') {
+            $isOrg   = DonorOrganization::where('user_id', $user->id)->exists();
+            $subType = $isOrg ? 'organization' : 'individual';
+        } elseif ($user->role === 'beneficiary') {
+            $isOrg   = BeneficiaryOrganization::where('user_id', $user->id)->exists();
+            $subType = $isOrg ? 'organization' : 'individual';
+        }
+
         return response()->json([
-            'message' => 'Login successful',
-            'token'   => $token,
-            'user'    => $user,
-            'role'    => $user->role,
+            'message'  => 'Login successful',
+            'token'    => $token,
+            'user'     => $user,
+            'role'     => $user->role,
+            'sub_type' => $subType,   // "individual" | "organization"
         ]);
     }
 

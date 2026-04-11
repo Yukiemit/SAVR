@@ -113,8 +113,8 @@ export default function NavBar_Donor() {
 
   // ── Profile navigation — role-based ──────────────────────────────────────
   const handleProfileClick = () => {
-    const role = localStorage.getItem("role");
-    if (role === "donor_organization") {
+    const subType = localStorage.getItem("sub_type");
+    if (subType === "organization") {
       window.location.href = "/donor/profile/organization";
     } else {
       window.location.href = "/donor/profile/individual";
@@ -128,12 +128,13 @@ export default function NavBar_Donor() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("role");
+    localStorage.removeItem("sub_type");
     window.location.href = "/";
   };
 
   // ── Role label ────────────────────────────────────────────────────────────
-  const role     = localStorage.getItem("role");
-  const roleLabel = role === "donor_organization" ? "Organization Donor" : "Individual Donor";
+  const subType  = localStorage.getItem("sub_type");
+  const roleLabel = subType === "organization" ? "Organization Donor" : "Individual Donor";
 
   return (
     <nav className="user-navbar">

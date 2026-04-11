@@ -45,11 +45,12 @@ export default function Login() {
         remember:   form.remember,
       });
 
-      const { token, role, user } = res.data;
+      const { token, role, sub_type, user } = res.data;
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("user",  JSON.stringify(user));
-      localStorage.setItem("role",  role);
+      localStorage.setItem("token",    token);
+      localStorage.setItem("user",     JSON.stringify(user));
+      localStorage.setItem("role",     role);
+      localStorage.setItem("sub_type", sub_type ?? "individual");
 
       if (role === "admin")             navigate("/admin/dashboard");
       else if (role === "staff")        navigate("/staff/dashboard");

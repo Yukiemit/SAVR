@@ -25,11 +25,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // ── Beneficiary ─────────────────────────────────────────────────────────
-    Route::get('/beneficiary/profile',   [BeneficiaryController::class, 'profile']);
-    Route::get('/beneficiary/dashboard', [BeneficiaryController::class, 'dashboard']);
+    Route::get('/beneficiary/profile',                    [BeneficiaryController::class, 'profile']);
+    Route::put('/beneficiary/profile',                    [BeneficiaryController::class, 'updateProfile']);
+    Route::post('/beneficiary/change-password/send-otp',  [BeneficiaryController::class, 'sendChangePasswordOtp']);
+    Route::post('/beneficiary/change-password',           [BeneficiaryController::class, 'changePassword']);
+    Route::post('/beneficiary/deactivate',                [BeneficiaryController::class, 'deactivate']);
+    Route::get('/beneficiary/dashboard',                  [BeneficiaryController::class, 'dashboard']);
 
-    // ── Donor — Profile, Stats, Combined History ─────────────────────────────
-    Route::get('/donor/profile',    [DonorController::class, 'profile']);
+    // ── Donor — Profile ───────────────────────────────────────────────────────
+    Route::get('/donor/profile',                        [DonorController::class, 'profile']);
+    Route::put('/donor/profile',                        [DonorController::class, 'updateProfile']);
+    Route::post('/donor/change-password/send-otp',      [DonorController::class, 'sendChangePasswordOtp']);
+    Route::post('/donor/change-password',               [DonorController::class, 'changePassword']);
+    Route::post('/donor/deactivate',                    [DonorController::class, 'deactivate']);
+
+    // ── Donor — Stats, Combined History ──────────────────────────────────────
     Route::get('/donor/stats',      [DonorController::class, 'stats']);
     Route::get('/donor/donations',  [DonorController::class, 'donations']);
 

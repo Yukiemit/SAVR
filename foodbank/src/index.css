@@ -10389,3 +10389,17 @@ body {
 .footer-logo:hover {
   transform: scale(1.05);
 }
+
+/* ── CHANGE PASSWORD SECTION (inline, shared by donor & beneficiary profiles) ── */
+.dp-pw-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1.5px solid #f0ede8;
+}
+
+.dp-pw-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px 20px;
+  margin-bottom: 10px;
+}
