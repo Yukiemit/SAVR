@@ -111,7 +111,7 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="/donor/profile/organization" element={
-            <ProtectedRoute allowedRoles={["donor_organization"]}>
+            <ProtectedRoute allowedRoles={["donor"]}>
               <DonorProfileOrganization />
             </ProtectedRoute>
           } />
@@ -160,7 +160,7 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="/beneficiary/profile/organization" element={
-            <ProtectedRoute allowedRoles={["beneficiary_organization"]}>
+            <ProtectedRoute allowedRoles={["beneficiary"]}>
               <BeneficiaryProfileOrganization />
             </ProtectedRoute>
           } />

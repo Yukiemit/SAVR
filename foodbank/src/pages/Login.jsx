@@ -65,12 +65,12 @@ export default function Login() {
       if (status === 403 && message?.includes("verify")) {
         const userId = err.response?.data?.user_id;
         navigate(`/verify-otp?user_id=${userId}`);
-      } else if (status === 403) {
-        setErrors({ general: message || "Access denied." });
-      } else if (status === 401 || status === 422) {
-        setErrors({ general: "Invalid credentials. Please try again." });
+        return; // don't fall through to setLoading(false) below
+      } else if (!err.response) {
+        setErrors({ general: "Cannot reach the server. Make sure the backend is running." });
       } else {
-        setErrors({ general: "Something went wrong. Please try again later." });
+        // Show the actual message from the backend so you know exactly what's wrong
+        setErrors({ general: message || `Error ${status}: Something went wrong.` });
       }
     } finally {
       setLoading(false);
@@ -108,8 +108,20 @@ export default function Login() {
           </div>
 
           {errors.general && (
-            <div className="error-summary" style={{ marginBottom: "4px" }}>
-              <p className="error-summary-title" style={{ margin: 0 }}>⚠️ {errors.general}</p>
+            <div style={{
+              background: "#fdecea",
+              border: "1.5px solid #f44336",
+              borderRadius: 10,
+              padding: "12px 16px",
+              marginBottom: 12,
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 10,
+            }}>
+              <span className="material-symbols-rounded" style={{ color: "#c62828", fontSize: 22, flexShrink: 0 }}>error</span>
+              <p style={{ margin: 0, color: "#c62828", fontWeight: 600, fontSize: 14, lineHeight: 1.4 }}>
+                {errors.general}
+              </p>
             </div>
           )}
 

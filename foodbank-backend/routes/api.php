@@ -32,6 +32,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/beneficiary/deactivate',                [BeneficiaryController::class, 'deactivate']);
     Route::get('/beneficiary/dashboard',                  [BeneficiaryController::class, 'dashboard']);
 
+    // ── Beneficiary — Requests ───────────────────────────────────────────────
+    Route::post('/beneficiary/requests',          [BeneficiaryController::class, 'submitRequest']);
+    Route::get('/beneficiary/requests',           [BeneficiaryController::class, 'getRequests']);
+    Route::delete('/beneficiary/requests/{id}',   [BeneficiaryController::class, 'cancelRequest']);
+
     // ── Donor — Profile ───────────────────────────────────────────────────────
     Route::get('/donor/profile',                        [DonorController::class, 'profile']);
     Route::put('/donor/profile',                        [DonorController::class, 'updateProfile']);
@@ -70,11 +75,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/staff/financial-donation-records/{id}/approve', [FinancialDonationController::class, 'approveRecord']);
     Route::post('/staff/financial-donation-records/{id}/reject',  [FinancialDonationController::class, 'rejectRecord']);
 
-    // ── Staff — Service Donation Records ─────────────────────────────────────
+    // ── Staff — Service Donations ─────────────────────────────────────────────
+    Route::get('/staff/service-donations',                  [ServiceDonationController::class, 'getRecords']);
+    Route::get('/staff/service-donations/stats',            [ServiceDonationController::class, 'getRecordStats']);
+    Route::post('/staff/service-donations/{id}/accept',     [ServiceDonationController::class, 'acceptRecord']);
+    Route::post('/staff/service-donations/{id}/decline',    [ServiceDonationController::class, 'declineRecord']);
+
+    // Legacy aliases (keep for backward compat)
     Route::get('/staff/service-donation-records',               [ServiceDonationController::class, 'getRecords']);
     Route::get('/staff/service-donation-records/stats',         [ServiceDonationController::class, 'getRecordStats']);
-    Route::post('/staff/service-donation-records/{id}/approve', [ServiceDonationController::class, 'approveRecord']);
-    Route::post('/staff/service-donation-records/{id}/reject',  [ServiceDonationController::class, 'rejectRecord']);
+    Route::post('/staff/service-donation-records/{id}/approve', [ServiceDonationController::class, 'acceptRecord']);
+    Route::post('/staff/service-donation-records/{id}/reject',  [ServiceDonationController::class, 'declineRecord']);
 
     // ── Donor pickup stubs (route exists, feature not yet built) ────────────
     Route::get('/donor/pickups',        fn() => response()->json([]));
@@ -110,3 +121,9 @@ Route::get('/staff/donation-drives/stats',   [DonationController::class, 'getDri
 Route::post('/staff/donation-drives',        [DonationController::class, 'createDrive']);
 Route::put('/staff/donation-drives/{id}',    [DonationController::class, 'updateDrive']);
 Route::delete('/staff/donation-drives/{id}', [DonationController::class, 'deleteDrive']);
+
+// ── STAFF — Beneficiary Requests ─────────────────────────────────────────────
+Route::get('/staff/beneficiary-requests',                  [DonationController::class, 'getBeneficiaryRequests']);
+Route::get('/staff/beneficiary-requests/stats',            [DonationController::class, 'getBeneficiaryRequestStats']);
+Route::post('/staff/beneficiary-requests/{id}/allocate',   [DonationController::class, 'allocateBeneficiaryRequest']);
+Route::post('/staff/beneficiary-requests/{id}/reject',     [DonationController::class, 'rejectBeneficiaryRequest']);

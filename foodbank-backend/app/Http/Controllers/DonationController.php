@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\DonationRequest;
 use App\Models\DonationDrive;
+use App\Models\BeneficiaryRequest;
 
 class DonationController extends Controller
 {
@@ -217,5 +218,99 @@ public function getRequests(Request $request)
             'pending'  => DonationDrive::where('status', 'Pending')->count(),
             'ongoing'  => DonationDrive::where('status', 'OnGoing')->count(),
         ]);
+    }
+
+    // ═══════════════════════════════════════════════════
+    // BENEFICIARY REQUESTS (from authenticated beneficiaries)
+    // ═══════════════════════════════════════════════════
+
+    // ✅ STAFF — Get all beneficiary requests
+    public function getBeneficiaryRequests(Request $request)
+    {
+        $query = BeneficiaryRequest::with('user')->orderBy('created_at', 'desc');
+
+        if ($request->search) {
+            $query->where(function ($q) use ($request) {
+                $q->where('request_name', 'like', "%{$request->search}%")
+                  ->orWhere('city',         'like', "%{$request->search}%")
+                  ->orWhere('barangay',     'like', "%{$request->search}%");
+            });
+        }
+
+        return response()->json($query->get()->map(function ($r) {
+            return [
+                'id'           => $r->id,
+                'request_name' => $r->request_name,
+                'type'         => $r->type,           // food | financial
+                'food_type'    => $r->food_type,
+                'quantity'     => $r->quantity,
+                'unit'         => $r->unit,
+                'amount'       => $r->amount,
+                'population'   => $r->population,
+                'age_min'      => $r->age_min,
+                'age_max'      => $r->age_max,
+                'address'      => "{$r->street}, Brgy. {$r->barangay}, {$r->city} {$r->zip_code}",
+                'city'         => $r->city,
+                'request_date' => $r->request_date,
+                'urgency'      => $r->urgency,
+                'status'       => $r->status,
+                'contact_name' => $r->user?->name,
+                'email'        => $r->user?->email,
+                'created_at'   => $r->created_at,
+            ];
+        }));
+    }
+
+    // ✅ STAFF — Stats for beneficiary requests
+    public function getBeneficiaryRequestStats()
+    {
+        return response()->json([
+            'pending'   => BeneficiaryRequest::where('status', 'Pending')->count(),
+            'allocated' => BeneficiaryRequest::where('status', 'Allocated')->count(),
+        ]);
+    }
+
+    // ✅ STAFF — Allocate a beneficiary request → creates donation drive
+    public function allocateBeneficiaryRequest(Request $request, $id)
+    {
+        $request->validate([
+            'drive_title' => 'required|string',
+            'goal'        => 'required|string',
+            'start_date'  => 'required|date',
+            'end_date'    => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $benRequest = BeneficiaryRequest::with('user')->findOrFail($id);
+
+        $drive = DonationDrive::create([
+            'beneficiary_request_id' => $benRequest->id,
+            'staff_id'               => auth()->id(),
+            'drive_title'            => $request->drive_title,
+            'type'                   => $benRequest->type === 'food' ? 'Food' : 'Financial',
+            'goal'                   => $request->goal,
+            'start_date'             => $request->start_date,
+            'end_date'               => $request->end_date,
+            'address'                => "{$benRequest->street}, Brgy. {$benRequest->barangay}, {$benRequest->city} {$benRequest->zip_code}",
+            'contact_person'         => $benRequest->user?->name,
+            'contact'                => null,
+            'email'                  => $benRequest->user?->email,
+            'status'                 => 'Pending',
+        ]);
+
+        $benRequest->update(['status' => 'Allocated']);
+
+        return response()->json([
+            'message' => 'Request allocated and donation drive created.',
+            'drive'   => $drive,
+        ]);
+    }
+
+    // ✅ STAFF — Reject a beneficiary request
+    public function rejectBeneficiaryRequest($id)
+    {
+        $benRequest = BeneficiaryRequest::findOrFail($id);
+        $benRequest->update(['status' => 'Rejected']);
+
+        return response()->json(['message' => 'Request rejected.']);
     }
 }

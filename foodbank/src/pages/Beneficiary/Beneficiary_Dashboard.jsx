@@ -19,6 +19,7 @@ const DUMMY_RECENT = [
 const STATUS_STYLE = {
   completed: { bg: "#e8f5e9", color: "#2e7d32", icon: "check_circle", label: "Completed" },
   accepted:  { bg: "#e3f2fd", color: "#1565c0", icon: "thumb_up",     label: "Accepted"  },
+  allocated: { bg: "#fff8e1", color: "#f4b942", icon: "check_circle", label: "Allocated" },
   pending:   { bg: "#fff3e0", color: "#e65100", icon: "schedule",     label: "Pending"   },
   rejected:  { bg: "#fdecea", color: "#c62828", icon: "cancel",       label: "Rejected"  },
 };

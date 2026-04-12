@@ -33,6 +33,7 @@ export default function NavBar_Beneficiary() {
   const storedName = storedUser?.name || "Beneficiary";
 
   const [beneficiaryName, setBeneficiaryName] = useState(storedName);
+  const [subType,         setSubType]         = useState(localStorage.getItem("sub_type") || "individual");
   const [bellOpen,        setBellOpen]        = useState(false);
   const [notifications,   setNotifications]   = useState([]);
   const [unreadCount,     setUnreadCount]     = useState(0);
@@ -41,17 +42,23 @@ export default function NavBar_Beneficiary() {
   const bellRef    = useRef(null);
   const profileRef = useRef(null);
 
-  // ── Fetch beneficiary profile from API to keep name fresh ────────────────
+  // ── Fetch beneficiary profile from API to keep name + sub_type fresh ───────
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res  = await api.get("/beneficiary/profile");
-        const name = res.data.name
-          || res.data.org_name
-          || `${res.data.first_name ?? ""} ${res.data.last_name ?? ""}`.trim()
+        const data = res.data;
+        const name = data.name
+          || data.org_name
+          || `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim()
           || storedName;
         setBeneficiaryName(name);
         localStorage.setItem("user", JSON.stringify({ ...storedUser, name }));
+        // Keep sub_type in sync with the real profile type
+        if (data.type) {
+          localStorage.setItem("sub_type", data.type);
+          setSubType(data.type);
+        }
       } catch (_) {}
     };
     fetchProfile();
@@ -113,7 +120,6 @@ export default function NavBar_Beneficiary() {
 
   // ── Profile navigation — role-based ──────────────────────────────────────
   const handleProfileClick = () => {
-    const subType = localStorage.getItem("sub_type");
     if (subType === "organization") {
       window.location.href = "/beneficiary/profile/organization";
     } else {
@@ -133,7 +139,6 @@ export default function NavBar_Beneficiary() {
   };
 
   // ── Role label ────────────────────────────────────────────────────────────
-  const subType   = localStorage.getItem("sub_type");
   const roleLabel = subType === "organization" ? "Organization Beneficiary" : "Individual Beneficiary";
 
   return (

@@ -173,7 +173,7 @@ export default function Beneficiary_Profile_Organization() {
             <div className="dp-fields-grid">
               <DpField label="Organization Name"   name="org_name"  val={val} editing={editing} onChange={handleChange} full />
               <DpField label="Website URL"          name="website"   val={val} editing={editing} onChange={handleChange} />
-              <DpField label="Organization Type"    name="type"      val={val} editing={editing} onChange={handleChange}
+              <DpField label="Organization Type"    name="org_type"  val={val} editing={editing} onChange={handleChange}
                 type="select" options={["Non-Profit", "NGO", "Community", "Religious", "Government", "Other"]} small />
               <DpField label="Sector / Focus Area"  name="sector"    val={val} editing={editing} onChange={handleChange}
                 type="select" options={["Food Security", "Poverty Alleviation", "Health", "Education", "Disaster Relief", "Other"]} small />

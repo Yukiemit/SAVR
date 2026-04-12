@@ -173,7 +173,7 @@ export default function Donor_Profile_Organization() {
             <div className="dp-fields-grid">
               <DpField label="Organization Name" name="org_name" val={val} editing={editing} onChange={handleChange} full />
               <DpField label="Website URL"        name="website"  val={val} editing={editing} onChange={handleChange} />
-              <DpField label="Organization Type"  name="type"     val={val} editing={editing} onChange={handleChange}
+              <DpField label="Organization Type"  name="org_type" val={val} editing={editing} onChange={handleChange}
                 type="select" options={["Private", "Public"]} small />
               <DpField label="Industry / Sector"  name="industry" val={val} editing={editing} onChange={handleChange}
                 type="select" options={["Food", "NGO", "Corporate"]} small />

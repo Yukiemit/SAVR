@@ -8,8 +8,7 @@ class ServiceDonationRecord extends Model
 {
     protected $fillable = [
         'user_id',
-        'service_type',
-        'quantity',
+        'service_tab',    // "Transportation" | "Volunteer Work"
         'frequency',
         'date',
         'day_of_week',
@@ -17,17 +16,34 @@ class ServiceDonationRecord extends Model
         'starts_at',
         'ends_at',
         'address',
+
+        // Transportation-specific
+        'quantity',
+        'vehicle_type',
+        'capacity',
+        'max_distance',
+        'transport_categories',
+
+        // Volunteer Work-specific
+        'headcount',
+        'preferred_work',
+        'skill_categories',
+
+        // Contact
         'first_name',
         'last_name',
         'email',
         'notes',
+
+        // Staff review
         'status',
         'staff_notes',
     ];
 
     protected $casts = [
-        'all_day' => 'boolean',
-        'date'    => 'date',
+        'all_day'               => 'boolean',
+        'transport_categories'  => 'array',
+        'skill_categories'      => 'array',
     ];
 
     public function user()

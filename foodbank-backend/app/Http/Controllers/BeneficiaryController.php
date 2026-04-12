@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Models\Beneficiary;
 use App\Models\BeneficiaryOrganization;
+use App\Models\BeneficiaryRequest;
 use App\Mail\OtpMail;
 
 class BeneficiaryController extends Controller
@@ -31,6 +32,7 @@ class BeneficiaryController extends Controller
         if ($org) {
             return response()->json(array_merge($org->toArray(), [
                 'type'       => 'organization',
+                'org_type'   => $org->type,
                 'email'      => $org->email ?? $user->email,
                 'updated_at' => $org->updated_at ?? $user->updated_at,
             ]));
@@ -86,7 +88,7 @@ class BeneficiaryController extends Controller
             $org->update([
                 'org_name'        => $request->org_name,
                 'website'         => $request->website        ?? $org->website,
-                'type'            => $request->type           ?? $org->type,
+                'type'            => $request->org_type        ?? $org->type,
                 'sector'          => $request->sector         ?? $org->sector,
                 'house'           => $request->house          ?? $org->house,
                 'barangay'        => $request->barangay       ?? $org->barangay,
@@ -174,21 +176,151 @@ class BeneficiaryController extends Controller
     // GET /api/beneficiary/dashboard
     public function dashboard(Request $request)
     {
-        $user = $request->user();
-        $ben  = Beneficiary::where('user_id', $user->id)->first();
+        $user  = $request->user();
+        $ben   = Beneficiary::where('user_id', $user->id)->first();
 
         $firstName = $ben?->first_name ?? '';
         $lastName  = $ben?->last_name  ?? '';
         $fullName  = trim("$firstName $lastName") ?: $user->name;
 
+        $allRequests   = BeneficiaryRequest::where('user_id', $user->id)->get();
+        $totalRequests = $allRequests->count();
+        $pendingCount  = $allRequests->where('status', 'Pending')->count();
+        $activeCount   = $allRequests->where('status', 'Allocated')->count();
+
+        $recentRequests = BeneficiaryRequest::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(fn ($r) => [
+                'id'           => $r->id,
+                'request_name' => $r->request_name,
+                'type'         => $r->type,
+                'date'         => $r->request_date
+                    ? \Carbon\Carbon::parse($r->request_date)->format('M d, Y')
+                    : '—',
+                'amount_items' => $r->type === 'food'
+                    ? "{$r->quantity} {$r->unit} of {$r->food_type}"
+                    : '₱' . number_format((float)$r->amount, 2),
+                'status'       => strtolower($r->status),
+                'urgency'      => $r->urgency,
+            ]);
+
         return response()->json([
             'name'            => $fullName,
             'first_name'      => $firstName,
             'last_name'       => $lastName,
-            'total_requests'  => 0,
-            'active_count'    => 0,
-            'pending_count'   => 0,
-            'recent_requests' => [],
+            'total_requests'  => $totalRequests,
+            'active_count'    => $activeCount,
+            'pending_count'   => $pendingCount,
+            'recent_requests' => $recentRequests,
         ]);
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // POST /beneficiary/requests
+    // Beneficiary submits a food or financial assistance request
+    // ══════════════════════════════════════════════════════════════════
+    public function submitRequest(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'type'         => 'required|in:food,financial',
+            'request_name' => 'required|string|max:255',
+            'population'   => 'required|integer|min:1',
+            'age_range_min' => 'required|integer|min:0',
+            'age_range_max' => 'required|integer|min:0|gte:age_range_min',
+            'street'       => 'required|string',
+            'barangay'     => 'required|string',
+            'city'         => 'required|string',
+            'zip_code'     => 'required|string',
+            'request_date' => 'required|date',
+            'urgency'      => 'required|in:low,medium,high',
+            // food-specific
+            'food_type'    => 'required_if:type,food|nullable|string',
+            'quantity'     => 'required_if:type,food|nullable|numeric|min:1',
+            'unit'         => 'required_if:type,food|nullable|string',
+            // financial-specific
+            'amount'       => 'required_if:type,financial|nullable|numeric|min:1',
+        ]);
+
+        $req = BeneficiaryRequest::create([
+            'user_id'      => $user->id,
+            'type'         => $request->type,
+            'request_name' => $request->request_name,
+            'food_type'    => $request->food_type,
+            'quantity'     => $request->quantity,
+            'unit'         => $request->unit,
+            'amount'       => $request->amount,
+            'population'   => $request->population,
+            'age_min'      => $request->age_range_min,
+            'age_max'      => $request->age_range_max,
+            'street'       => $request->street,
+            'barangay'     => $request->barangay,
+            'city'         => $request->city,
+            'zip_code'     => $request->zip_code,
+            'request_date' => $request->request_date,
+            'urgency'      => $request->urgency,
+            'status'       => 'Pending',
+        ]);
+
+        return response()->json([
+            'message' => 'Request submitted successfully.',
+            'data'    => $req,
+        ], 201);
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // GET /beneficiary/requests
+    // Returns all requests for the authenticated beneficiary
+    // ══════════════════════════════════════════════════════════════════
+    public function getRequests(Request $request)
+    {
+        $user = $request->user();
+
+        $requests = BeneficiaryRequest::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(fn ($r) => [
+                'id'           => $r->id,
+                'request_name' => $r->request_name,
+                'type'         => $r->type,
+                'food_type'    => $r->food_type,
+                'quantity'     => $r->quantity,
+                'unit'         => $r->unit,
+                'amount'       => $r->amount,
+                'population'   => $r->population,
+                'age_range_min' => $r->age_min,
+                'age_range_max' => $r->age_max,
+                'city'         => $r->city,
+                'zip_code'     => $r->zip_code,
+                'request_date' => $r->request_date,
+                'urgency'      => $r->urgency,
+                'status'       => strtolower($r->status), // pending | allocated | rejected
+            ]);
+
+        return response()->json($requests);
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // DELETE /beneficiary/requests/{id}
+    // Cancel a pending request (only allowed if status = Pending)
+    // ══════════════════════════════════════════════════════════════════
+    public function cancelRequest(Request $request, $id)
+    {
+        $user = $request->user();
+
+        $req = BeneficiaryRequest::where('id', $user->id === $request->user()->id ? $id : null)
+                                  ->where('user_id', $user->id)
+                                  ->firstOrFail();
+
+        if ($req->status !== 'Pending') {
+            return response()->json(['message' => 'Only pending requests can be cancelled.'], 403);
+        }
+
+        $req->delete();
+
+        return response()->json(['message' => 'Request cancelled.']);
     }
 }

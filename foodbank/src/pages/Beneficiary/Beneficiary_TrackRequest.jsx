@@ -2,58 +2,6 @@ import { useState, useEffect } from "react";
 import NavBar_Beneficiary from "../../components/NavBar_Beneficiary";
 import api from "../../services/api";
 
-// ── DUMMY DATA — delete when backend is connected ─────────────────────────────
-const DUMMY_REQUESTS = [
-  {
-    id: 1, request_name: "Request Name Here", type: "food",
-    food_type: "TypeOfDonationNeeded", population: 12000,
-    age_range_min: 10, age_range_max: 16,
-    city: "Caloocan", zip_code: "1400",
-    request_date: "2026-01-04", urgency: "high", status: "pending",
-  },
-  {
-    id: 2, request_name: "Kapatiran Fire Tondo", type: "food",
-    food_type: "Food Donation", population: 12000,
-    age_range_min: 10, age_range_max: 16,
-    city: "Caloocan", zip_code: "1400",
-    request_date: "2026-01-04", urgency: "medium", status: "pending",
-  },
-  {
-    id: 3, request_name: "Kapatiran Fire Tondo", type: "food",
-    food_type: "Food Donation", population: 12000,
-    age_range_min: 10, age_range_max: 16,
-    city: "Caloocan", zip_code: "1400",
-    request_date: "2026-01-04", urgency: "low", status: "pending",
-  },
-  {
-    id: 4, request_name: "Tondo Flood Relief", type: "financial",
-    food_type: null, population: 5000,
-    age_range_min: 5, age_range_max: 60,
-    city: "Manila", zip_code: "1012",
-    request_date: "2026-02-10", urgency: "high", status: "accepted",
-  },
-  {
-    id: 5, request_name: "Batasan Hills Food Drive",  type: "food",
-    food_type: "Rice", population: 8000,
-    age_range_min: 0, age_range_max: 12,
-    city: "Quezon City", zip_code: "1126",
-    request_date: "2025-12-01", urgency: "medium", status: "completed",
-  },
-  {
-    id: 6, request_name: "San Andres Financial Aid", type: "financial",
-    food_type: null, population: 300,
-    age_range_min: 18, age_range_max: 65,
-    city: "Manila", zip_code: "1015",
-    request_date: "2025-11-15", urgency: "low", status: "completed",
-  },
-  {
-    id: 7, request_name: "Smokey Mountain Relief", type: "food",
-    food_type: "Canned Goods", population: 1500,
-    age_range_min: 0, age_range_max: 18,
-    city: "Tondo", zip_code: "1013",
-    request_date: "2025-10-20", urgency: "high", status: "rejected",
-  },
-];
 
 const URGENCY_STYLE = {
   low:      { bg: "#2e7d32", color: "white" },
@@ -61,16 +9,16 @@ const URGENCY_STYLE = {
   high:     { bg: "#e53935", color: "white" },
 };
 
-const STATUS_GROUPS = ["pending", "accepted", "completed", "rejected"];
+// backend status map: Pending → pending, Allocated → accepted, Rejected → rejected
+const STATUS_GROUPS = ["pending", "accepted", "rejected"];
 
 const STATUS_LABELS = {
-  pending:   "Pending",
-  accepted:  "Accepted",
-  completed: "Completed",
-  rejected:  "Rejected / Cancelled",
+  pending:  "Pending",
+  accepted: "Allocated / Accepted",
+  rejected: "Rejected / Cancelled",
 };
 
-const FILTER_TABS = ["All", "Pending", "Accepted", "Completed", "Rejected"];
+const FILTER_TABS = ["All", "Pending", "Accepted", "Rejected"];
 
 export default function Beneficiary_TrackRequest() {
   const [requests,      setRequests]      = useState([]);
@@ -80,21 +28,20 @@ export default function Beneficiary_TrackRequest() {
   const [cancelling,    setCancelling]    = useState(null);  // id being cancelled
 
   // ── Fetch requests ────────────────────────────────────────────────────────
-  // TODO (backend): GET /api/beneficiary/requests
-  // Returns: [{ id, request_name, type, food_type, population,
-  //             age_range_min, age_range_max, city, zip_code,
-  //             request_date, urgency, status }]
   useEffect(() => {
     const fetchRequests = async () => {
       setLoading(true);
       try {
-        // const res = await api.get("/beneficiary/requests");
-        // setRequests(res.data);
-
-        // ── DUMMY fallback — delete when backend is ready ──
-        setRequests(DUMMY_REQUESTS);
+        const res = await api.get("/beneficiary/requests");
+        // Backend returns: status as lowercase "pending" | "allocated" | "rejected"
+        // Map "allocated" → "accepted" for display
+        const mapped = res.data.map((r) => ({
+          ...r,
+          status: r.status === "allocated" ? "accepted" : r.status,
+        }));
+        setRequests(mapped);
       } catch (_) {
-        setRequests(DUMMY_REQUESTS);
+        setRequests([]);
       } finally {
         setLoading(false);
       }
@@ -103,9 +50,6 @@ export default function Beneficiary_TrackRequest() {
   }, []);
 
   // ── Cancel request ────────────────────────────────────────────────────────
-  // TODO (backend): DELETE /api/beneficiary/requests/:id
-  // Only allowed when status = "pending"
-  // Returns: 200 OK or 403 Forbidden
   const handleCancel = async (id) => {
     if (!window.confirm("Are you sure you want to cancel this request?")) return;
     setCancelling(id);
@@ -127,7 +71,7 @@ export default function Beneficiary_TrackRequest() {
   // ── Filter logic ──────────────────────────────────────────────────────────
   const filteredRequests = filterTab === "All"
     ? requests
-    : requests.filter((r) => r.status === filterTab.toLowerCase());
+    : requests.filter((r) => r.status === filterTab.toLowerCase().replace("accepted", "accepted"));
 
   const countByStatus = (status) =>
     requests.filter((r) => r.status === status).length;

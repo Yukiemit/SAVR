@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../services/api";
 
@@ -18,7 +18,25 @@ export default function ResetPassword() {
   const [error, setError]             = useState("");
   const [loading, setLoading]         = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
-  const inputsRef = useRef([]);
+  const inputsRef   = useRef([]);
+  const intervalRef = useRef(null);
+
+  // Start the countdown automatically on mount
+  useEffect(() => {
+    startCountdown();
+    return () => clearInterval(intervalRef.current);
+  }, []);
+
+  const startCountdown = () => {
+    clearInterval(intervalRef.current);
+    setResendTimer(60);
+    intervalRef.current = setInterval(() => {
+      setResendTimer((t) => {
+        if (t <= 1) { clearInterval(intervalRef.current); return 0; }
+        return t - 1;
+      });
+    }, 1000);
+  };
 
   const handleOtpChange = (index, value) => {
     if (!/^\d?$/.test(value)) return;
@@ -51,10 +69,7 @@ export default function ResetPassword() {
   const handleResend = async () => {
     try {
       await api.post("/forgot-password", { email });
-      setResendTimer(60);
-      const interval = setInterval(() => {
-        setResendTimer((t) => { if (t <= 1) { clearInterval(interval); return 0; } return t - 1; });
-      }, 1000);
+      startCountdown();
     } catch { setError("Failed to resend code."); }
   };
 

@@ -8,6 +8,7 @@ class DonationDrive extends Model
 {
     protected $fillable = [
         'donation_request_id',
+        'beneficiary_request_id',
         'staff_id',
         'drive_title',
         'type',
@@ -24,6 +25,11 @@ class DonationDrive extends Model
     public function request()
     {
         return $this->belongsTo(DonationRequest::class, 'donation_request_id');
+    }
+
+    public function beneficiaryRequest()
+    {
+        return $this->belongsTo(BeneficiaryRequest::class, 'beneficiary_request_id');
     }
 
     public function staff()

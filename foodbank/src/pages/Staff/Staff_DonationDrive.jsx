@@ -33,6 +33,10 @@ export default function Staff_DonationDrive() {
     const [modalError, setModalError] = useState("");
     const [saving, setSaving]         = useState(false);
 
+    // ── Status confirmation ───────────────────────────────────────────────────
+    const [confirmStatus, setConfirmStatus] = useState(null); // { id, oldStatus, newStatus }
+    const [confirmSaving, setConfirmSaving] = useState(false);
+
     // ── Fetch all once, filter client-side ────────────────────────────────────
     const fetchAll = async () => {
         setLoading(true);
@@ -129,19 +133,31 @@ export default function Staff_DonationDrive() {
         }
     };
 
-    // ── Status change inline ──────────────────────────────────────────────────
-    const handleStatusChange = async (id, newStatus) => {
+    // ── Status change — show confirmation first ───────────────────────────────
+    const requestStatusChange = (id, oldStatus, newStatus) => {
+        if (newStatus === oldStatus) return;
+        setConfirmStatus({ id, oldStatus, newStatus });
+    };
+
+    const confirmStatusChange = async () => {
+        if (!confirmStatus) return;
+        setConfirmSaving(true);
         try {
-            await api.put(`/staff/donation-drives/${id}`, { status: newStatus });
-            // ✅ update local state immediately so UI reflects change instantly
-            setDrives(prev => prev.map(d => d.id === id ? { ...d, status: newStatus } : d));
-            // ✅ refresh stats too
+            await api.put(`/staff/donation-drives/${confirmStatus.id}`, { status: confirmStatus.newStatus });
+            setDrives(prev => prev.map(d =>
+                d.id === confirmStatus.id ? { ...d, status: confirmStatus.newStatus } : d
+            ));
             const statsRes = await api.get("/staff/donation-drives/stats");
             setStats(statsRes.data);
+            setConfirmStatus(null);
         } catch (err) {
             console.error("Status change error:", err);
+        } finally {
+            setConfirmSaving(false);
         }
     };
+
+    const cancelStatusChange = () => setConfirmStatus(null);
 
     const labelStyle = { display: "block", fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 4, marginTop: 12 };
     const inputStyle = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #ccc", fontSize: 14, boxSizing: "border-box" };
@@ -236,7 +252,7 @@ export default function Staff_DonationDrive() {
                                                     className="dd-drive-status-select"
                                                     value={d.status}
                                                     style={{ color: statusCfg.color, background: statusCfg.bg, borderColor: statusCfg.border }}
-                                                    onChange={(e) => handleStatusChange(d.id, e.target.value)}
+                                                    onChange={(e) => requestStatusChange(d.id, d.status, e.target.value)}
                                                 >
                                                     {Object.entries(STATUS_CONFIG).map(([k, v]) => (
                                                         <option key={k} value={k}>{v.label}</option>
@@ -281,6 +297,45 @@ export default function Staff_DonationDrive() {
                 </div>
 
             </main>
+
+            {/* STATUS CONFIRMATION MODAL */}
+            {confirmStatus && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+                    <div style={{ background: "#fff", borderRadius: 16, padding: "32px 36px", width: 400, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", textAlign: "center" }}>
+                        <span className="material-symbols-rounded" style={{ fontSize: 48, color: "#f4b942", marginBottom: 12, display: "block" }}>
+                            swap_horiz
+                        </span>
+                        <h2 style={{ margin: "0 0 10px", fontSize: 20, fontWeight: 800 }}>Change Status?</h2>
+                        <p style={{ color: "#666", fontSize: 14, margin: "0 0 24px", lineHeight: 1.6 }}>
+                            Are you sure you want to change the status from{" "}
+                            <strong style={{ color: STATUS_CONFIG[confirmStatus.oldStatus]?.color || "#333" }}>
+                                {confirmStatus.oldStatus}
+                            </strong>{" "}
+                            to{" "}
+                            <strong style={{ color: STATUS_CONFIG[confirmStatus.newStatus]?.color || "#333" }}>
+                                {confirmStatus.newStatus}
+                            </strong>
+                            ?
+                        </p>
+                        <div style={{ display: "flex", gap: 12 }}>
+                            <button
+                                onClick={cancelStatusChange}
+                                disabled={confirmSaving}
+                                style={{ flex: 1, padding: "10px", borderRadius: 999, background: "#fff", color: "#333", border: "1.5px solid #ccc", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmStatusChange}
+                                disabled={confirmSaving}
+                                style={{ flex: 2, padding: "10px", borderRadius: 999, background: "#2e7d32", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: confirmSaving ? 0.7 : 1 }}
+                            >
+                                {confirmSaving ? "Saving…" : "Confirm"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ADD / EDIT MODAL */}
             {showModal && (
