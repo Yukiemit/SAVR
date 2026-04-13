@@ -11,14 +11,14 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
 
-            // What kind of service
-            $table->string('service_type');   // Transportation | Volunteer Work | Cooking Assistance
-            $table->unsignedInteger('quantity')->default(1);
+            // Service tab: Transportation | Volunteer Work
+            $table->string('service_tab')->nullable();
+            $table->unsignedInteger('quantity')->nullable();
 
             // Schedule
-            $table->enum('frequency', ['Monthly', 'Weekly', 'Daily', 'One-Time']);
-            $table->date('date')->nullable();         // Monthly / One-Time: specific date
-            $table->string('day_of_week')->nullable(); // Weekly: Monday–Sunday
+            $table->string('frequency');               // Monthly | Weekly | Daily | One-Time
+            $table->date('date')->nullable();           // Monthly / One-Time: specific date
+            $table->string('day_of_week')->nullable();  // Weekly: Monday–Sunday
 
             // Time
             $table->boolean('all_day')->default(false);
@@ -32,8 +32,19 @@ return new class extends Migration {
             $table->string('email');
             $table->text('notes')->nullable();
 
+            // Transportation-specific
+            $table->string('vehicle_type')->nullable();
+            $table->unsignedInteger('capacity')->nullable();
+            $table->unsignedInteger('max_distance')->nullable();
+            $table->json('transport_categories')->nullable();
+
+            // Volunteer Work-specific
+            $table->unsignedInteger('headcount')->nullable();
+            $table->string('preferred_work')->nullable();
+            $table->json('skill_categories')->nullable();
+
             // Staff review
-            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
+            $table->string('status')->default('pending'); // pending | accepted | declined
             $table->text('staff_notes')->nullable();
 
             $table->timestamps();
