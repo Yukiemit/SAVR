@@ -44,7 +44,7 @@ return new class extends Migration {
             $table->json('skill_categories')->nullable();
 
             // Staff review
-            $table->string('status')->default('pending'); // pending | accepted | declined
+            $table->string('status')->default('pending');  // pending | accepted | declined
             $table->text('staff_notes')->nullable();
 
             $table->timestamps();
