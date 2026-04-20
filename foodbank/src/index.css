@@ -6207,6 +6207,7 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   display: flex;
   flex-direction: column;
+  padding-bottom: 0;
 }
 
 /* ── MAIN ── */
@@ -6342,9 +6343,8 @@ body {
   width: 100%;
   overflow-x: auto;
   background: white;
-  border-radius: 16px 16px 0 0;
+  border-radius: 16px;
   border: 1px solid #eee;
-  border-bottom: none;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
@@ -6488,19 +6488,27 @@ body {
 
 /* ── FOOTER BAR ── */
 .sis-footer-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
   background: #2e7d32;
-  border-radius: 0 0 16px 16px;
   font-size: 13px;
   font-weight: 700;
   color: white;
-  border: 1px solid #eee;
-  border-top: none;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.07);
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.07);
+  z-index: 1000;
 }
+.sis-main {
+  flex: 1;
+  padding: 36px 50px 80px;
+  box-sizing: border-box;
+}
+
 
 .sis-footer-clock {
   font-size: 16px;
@@ -6972,6 +6980,7 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   display: flex;
   flex-direction: column;
+  padding-bottom: 0;
 }
 
 /* ── MAIN ── */
@@ -7206,9 +7215,8 @@ body {
   width: 100%;
   overflow-x: auto;
   background: white;
-  border-radius: 16px 16px 0 0;
+  border-radius: 16px; 
   border: 1px solid #eee;
-  border-bottom: none;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
@@ -7360,18 +7368,25 @@ body {
 
 /* ── Footer bar ── */
 .sif-footer-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
   background: #2e7d32;
-  border-radius: 0 0 16px 16px;
   font-size: 13px;
   font-weight: 700;
   color: white;
-  border: 1px solid #eee;
-  border-top: none;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.07);
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.07);
+  z-index: 1000;
+}
+.sif-main {
+  flex: 1;
+  padding: 36px 50px 80px; /* Changed from 60px to 80px to account for fixed footer */
+  box-sizing: border-box;
 }
 
 .sif-footer-clock    { font-size: 16px; vertical-align: middle; margin-right: 6px; }
