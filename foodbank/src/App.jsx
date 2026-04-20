@@ -19,6 +19,8 @@ import StaffDonationRequest from "./pages/Staff/Staff_DonationRequest";
 import StaffDonationDrive from "./pages/Staff/Staff_DonationDrive";
 import StaffServiceApproval from "./pages/Staff/Staff_ServiceApproval";
 import StaffDonationJourneyTracker from "./pages/Staff/Staff_DonationJourneyTracker"
+import StaffInventoryService from "./pages/Staff/Staff_InventoryService";
+import StaffInventoryFood from "./pages/Staff/Staff_InventoryFood";
 
 import DonorDashboard from "./pages/Donor/Donor_Dashboard";
 import DonorProfileIndividual from "./pages/Donor/Donor_ProfileIndividual";
@@ -96,6 +98,16 @@ function App() {
           <Route path="/staff/operations/journey-tracker" element={
             <ProtectedRoute allowedRoles={["staff"]}>
               <StaffDonationJourneyTracker />
+            </ProtectedRoute>
+          } />
+          <Route path="/staff/inventory/service" element={
+            <ProtectedRoute allowedRoles={["staff"]}>
+              <StaffInventoryService />
+            </ProtectedRoute>
+          } />
+          <Route path="/staff/inventory/food" element={
+            <ProtectedRoute allowedRoles={["staff"]}>
+              <StaffInventoryFood />
             </ProtectedRoute>
           } />
 

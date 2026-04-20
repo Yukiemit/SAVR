@@ -8,9 +8,9 @@ export default function Register() {
       {/* NAVBAR */}
       <nav className="navbar">
         <div className="logo">
-          <img src="/images/logoo.png" alt="Logo" style={{ height: "40px" }} />
+          <img src="/images/logoo.png" alt="Logo" style={{ height: "40px"}} />
         </div>
-        <div className="nav-links">
+        <div className="nav-links" style={{ margin: "25px" }}>
           <a href="/">Home</a>
           <a href="/about">About</a>
           <a href="/partners">Partners</a>

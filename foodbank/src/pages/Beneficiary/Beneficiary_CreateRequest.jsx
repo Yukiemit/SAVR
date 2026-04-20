@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import NavBar_Beneficiary from "../../components/NavBar_Beneficiary";
 import api from "../../services/api";
 
-// ── Empty state templates ─────────────────────────────────────────────────────
 const EMPTY_FOOD = {
   request_name: "",
   food_type:    "",
@@ -41,20 +40,21 @@ const FOOD_TYPES = [
 const UNITS = ["kg", "g", "lbs", "pcs", "cans", "bags", "liters", "boxes"];
 
 const URGENCY_LEVELS = [
-  { value: "low",      label: "Low"      },
-  { value: "medium",   label: "Medium"   },
-  { value: "high",     label: "High"     },
+  { value: "low",    label: "Low"    },
+  { value: "medium", label: "Medium" },
+  { value: "high",   label: "High"   },
 ];
 
 export default function Beneficiary_CreateRequest() {
   const navigate = useNavigate();
-  const [tab,     setTab]     = useState("food");       // "food" | "financial"
-  const [food,    setFood]    = useState(EMPTY_FOOD);
-  const [fin,     setFin]     = useState(EMPTY_FINANCIAL);
-  const [errors,  setErrors]  = useState({});
-  const [status,  setStatus]  = useState(null);         // null | "loading" | "success" | "error"
+  const [tab,       setTab]       = useState("food");
+  const [food,      setFood]      = useState(EMPTY_FOOD);
+  const [fin,       setFin]       = useState(EMPTY_FINANCIAL);
+  const [errors,    setErrors]    = useState({});
+  const [status,    setStatus]    = useState(null);
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupType, setPopupType] = useState("error"); // "success" | "error"
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleFoodChange = (e) => {
     setFood((p) => ({ ...p, [e.target.name]: e.target.value }));
     if (errors[e.target.name]) setErrors((p) => ({ ...p, [e.target.name]: null }));
@@ -71,7 +71,6 @@ export default function Beneficiary_CreateRequest() {
     setStatus(null);
   };
 
-  // ── Validation ────────────────────────────────────────────────────────────
   const validate = () => {
     const e   = {};
     const src = tab === "food" ? food : fin;
@@ -103,15 +102,6 @@ export default function Beneficiary_CreateRequest() {
     return e;
   };
 
-  // ── Submit ────────────────────────────────────────────────────────────────
-  // TODO (backend): POST /api/beneficiary/requests
-  // Body (food):      { type: "food", request_name, food_type, quantity, unit,
-  //                     population, age_range_min, age_range_max,
-  //                     street, barangay, city, zip_code, request_date, urgency }
-  // Body (financial): { type: "financial", request_name, amount,
-  //                     population, age_range_min, age_range_max,
-  //                     street, barangay, city, zip_code, request_date, urgency }
-  // Returns: { id, status: "pending", created_at, ... }
   const handleSubmit = async () => {
     const clientErrors = validate();
     if (Object.keys(clientErrors).length > 0) {
@@ -143,10 +133,14 @@ export default function Beneficiary_CreateRequest() {
 
       await api.post("/beneficiary/requests", payload);
       setStatus("success");
+      setPopupType("success");
+      setShowPopup(true);
       setFood(EMPTY_FOOD);
       setFin(EMPTY_FINANCIAL);
     } catch {
       setStatus("error");
+      setPopupType("error");
+      setShowPopup(true);
     }
   };
 
@@ -154,10 +148,9 @@ export default function Beneficiary_CreateRequest() {
     .filter(([_, msg]) => msg)
     .map(([field, msg]) => ({ field, msg }));
 
-  const src     = tab === "food" ? food : fin;
+  const src      = tab === "food" ? food : fin;
   const onChange = tab === "food" ? handleFoodChange : handleFinChange;
-
-  const inp = (name, hasErr) =>
+  const inp      = (name, hasErr) =>
     `ben-req-input${hasErr ? " ben-req-input-error" : ""}`;
 
   return (
@@ -222,7 +215,7 @@ export default function Beneficiary_CreateRequest() {
             />
           </div>
 
-          {/* FOOD-SPECIFIC: Type of Food + Quantity + Unit */}
+          {/* FOOD-SPECIFIC */}
           {tab === "food" && (
             <div className="ben-req-row">
               <div className="ben-req-field ben-req-field-grow">
@@ -264,7 +257,7 @@ export default function Beneficiary_CreateRequest() {
             </div>
           )}
 
-          {/* FINANCIAL-SPECIFIC: Amount */}
+          {/* FINANCIAL-SPECIFIC */}
           {tab === "financial" && (
             <div className="ben-req-field">
               <label className="ben-req-label">Amount of Money Needed (₱)</label>
@@ -401,18 +394,6 @@ export default function Beneficiary_CreateRequest() {
           </div>
         )}
 
-        {/* ── STATUS MESSAGES ── */}
-        {status === "success" && (
-          <p className="ben-req-status ben-req-status-success">
-            ✓ Your request has been submitted successfully!
-          </p>
-        )}
-        {status === "error" && (
-          <p className="ben-req-status ben-req-status-error">
-            Something went wrong. Please try again.
-          </p>
-        )}
-
         {/* ── SUBMIT ── */}
         <div className="ben-req-submit-row">
           <button
@@ -425,6 +406,32 @@ export default function Beneficiary_CreateRequest() {
         </div>
 
       </main>
+
+      {/* ── FEEDBACK POPUP ── */}
+      {showPopup && (
+        <div className="ben-req-popup-overlay" onClick={() => setShowPopup(false)}>
+          <div
+            className={`ben-req-popup-box ${popupType === "success" ? "ben-req-popup-success" : "ben-req-popup-error"}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="ben-req-popup-icon">
+              {popupType === "success" ? "✓" : "✕"}
+            </div>
+            <div className="ben-req-popup-content">
+              <p className="ben-req-popup-title">
+                {popupType === "success" ? "Request Submitted!" : "Submission Failed"}
+              </p>
+              <p className="ben-req-popup-msg">
+                {popupType === "success"
+                  ? "Your request has been submitted and is now pending review."
+                  : "Something went wrong. Please try again."}
+              </p>
+            </div>
+            <button className="ben-req-popup-close" onClick={() => setShowPopup(false)}>✕</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

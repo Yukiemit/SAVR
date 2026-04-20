@@ -23,8 +23,7 @@ const navItems = [
     label: "Inventory",
     children: [
       { label: "Service",          path: "/staff/inventory/service" },
-      { label: "Raw Ingr.",        path: "/staff/inventory/raw-ingredients" },
-      { label: "Prep. Meal",       path: "/staff/inventory/prepared-meals" },
+      { label: "Food",        path: "/staff/inventory/food" },
     ],
   },
   { label: "Reports", path: "/staff/reports" },
