@@ -13,8 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
 
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->web();   // ✅ THIS FIXES "web does not exist"
-        $middleware->api();   // ✅ enable API routes
+        $middleware->web();   
+        $middleware->api();  
+        $middleware->statefulApi();
+        $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
     })
 
     ->withExceptions(function (Exceptions $exceptions) {

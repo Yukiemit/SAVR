@@ -475,10 +475,10 @@ export default function RegisterDonor() {
       {/* NAVBAR */}
       <nav className="navbar">
         <div className="logo">
-          <img src="/images/logoo.png" alt="Logo" style={{ height: "40px" }} />
+          <img src="/images/logoo.png" alt="Logo" style={{ height: "50px" }} />
         </div>
-        <div className="nav-links">
-          <a href="/home">Home</a>
+        <div className="nav-links" style={{ margin: "10px" }}>
+          <a href="/">Home</a>
           <a href="/about">About</a>
           <a href="/partners">Partners</a>
           <a href="/media">Media</a>

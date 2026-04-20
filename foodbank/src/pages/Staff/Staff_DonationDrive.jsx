@@ -3,7 +3,6 @@ import NavBar_Staff from "../../components/NavBar_Staff";
 import api from "../../services/api";
 
 const STATUS_CONFIG = {
-    Pending:   { label: "Pending",   color: "#555",    bg: "#f0f0f0",  border: "#ccc"    },
     OnGoing:   { label: "OnGoing",   color: "#f4b942", bg: "#fef3e2",  border: "#f4b942" },
     Done:      { label: "Done",      color: "#2e7d32", bg: "#e8f5e9",  border: "#2e7d32" },
     Cancelled: { label: "Cancelled", color: "#e74c3c", bg: "#fdecea",  border: "#e74c3c" },
@@ -16,8 +15,22 @@ const TYPE_CONFIG = {
 
 const EMPTY_FORM = {
     drive_title: "", type: "Food", goal: "", start_date: "", end_date: "",
-    address: "", contact_person: "", contact: "", email: "", status: "Pending",
+    address: "", contact_person: "", email: "", status: "OnGoing",
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Parse the numeric portion out of a goal string like "300 for Dry Goods"
+ * Returns the number, or 0 if not found.
+ */
+function parseGoalNumber(goalStr) {
+    if (!goalStr) return 0;
+    const match = goalStr.match(/^(\d+(\.\d+)?)/);
+    return match ? Number(match[1]) : 0;
+}
 
 export default function Staff_DonationDrive() {
 
@@ -34,15 +47,15 @@ export default function Staff_DonationDrive() {
     const [saving, setSaving]         = useState(false);
 
     // ── Status confirmation ───────────────────────────────────────────────────
-    const [confirmStatus, setConfirmStatus] = useState(null); // { id, oldStatus, newStatus }
+    const [confirmStatus, setConfirmStatus] = useState(null);
     const [confirmSaving, setConfirmSaving] = useState(false);
 
-    // ── Fetch all once, filter client-side ────────────────────────────────────
+    // ── Fetch ─────────────────────────────────────────────────────────────────
     const fetchAll = async () => {
         setLoading(true);
         try {
             const [drivesRes, statsRes] = await Promise.all([
-                api.get("/staff/donation-drives"),  // ✅ no params
+                api.get("/staff/donation-drives"),
                 api.get("/staff/donation-drives/stats"),
             ]);
             setDrives(drivesRes.data);
@@ -54,14 +67,11 @@ export default function Staff_DonationDrive() {
         }
     };
 
-    useEffect(() => { fetchAll(); }, []); // ✅ fetch once only
+    useEffect(() => { fetchAll(); }, []);
 
     // ── Client-side filter + search ───────────────────────────────────────────
     const visible = drives.filter((d) => {
-        const matchFilter =
-            filter === "all" ? true :
-            d.status === filter;
-
+        const matchFilter = filter === "all" ? true : d.status === filter;
         const q = search.toLowerCase();
         const matchSearch =
             !q ||
@@ -69,7 +79,6 @@ export default function Staff_DonationDrive() {
             d.address?.toLowerCase().includes(q)        ||
             d.contact_person?.toLowerCase().includes(q) ||
             d.email?.toLowerCase().includes(q);
-
         return matchFilter && matchSearch;
     });
 
@@ -84,23 +93,65 @@ export default function Staff_DonationDrive() {
     // ── Open Edit modal ───────────────────────────────────────────────────────
     const openEdit = (drive) => {
         setEditTarget(drive);
+
+        const suffix = drive.type === "Food" && drive.food_type
+            ? ` for ${drive.food_type}`
+            : "";
+
+        const existingNum = drive.goal
+            ? drive.goal.split(" for ")[0]
+            : "";
+
         setForm({
             drive_title:    drive.drive_title    || "",
             type:           drive.type           || "Food",
-            goal:           drive.goal           || "",
+            goal:           existingNum + suffix,
             start_date:     drive.start_date     || "",
             end_date:       drive.end_date       || "",
             address:        drive.address        || "",
             contact_person: drive.contact_person || "",
-            contact:        drive.contact        || "",
             email:          drive.email          || "",
-            status:         drive.status         || "Pending",
+            status:         drive.status         || "OnGoing",
         });
         setModalError("");
         setShowModal(true);
     };
 
-    // ── Save (create or update) ───────────────────────────────────────────────
+    const handleGoalChange = (raw) => {
+        const suffix = editTarget?.type === "Food" && editTarget?.food_type
+            ? ` for ${editTarget.food_type}`
+            : "";
+
+        if (!suffix) {
+            setForm((f) => ({ ...f, goal: raw }));
+            return;
+        }
+
+        const numPart = raw.includes(suffix)
+            ? raw.substring(0, raw.indexOf(suffix))
+            : raw.replace(suffix, "");
+
+        setForm((f) => ({ ...f, goal: numPart + suffix }));
+    };
+
+    // When food_type changes, re-attach new suffix to existing number portion
+    const handleFoodTypeChange = (newFoodType) => {
+        const currentNum = form.goal.split(" for ")[0] || "";
+        const newSuffix  = newFoodType ? ` for ${newFoodType}` : "";
+        setForm((f) => ({ ...f, food_type: newFoodType, goal: currentNum + newSuffix }));
+    };
+
+    // When type switches away from Food, clear the suffix
+    const handleTypeChange = (newType) => {
+        if (newType !== "Food") {
+            const currentNum = form.goal.split(" for ")[0] || "";
+            setForm((f) => ({ ...f, type: newType, food_type: "", goal: currentNum }));
+        } else {
+            setForm((f) => ({ ...f, type: newType }));
+        }
+    };
+
+    // ── Save ──────────────────────────────────────────────────────────────────
     const handleSave = async () => {
         if (!form.drive_title || !form.goal || !form.start_date || !form.end_date) {
             setModalError("Please fill in all required fields.");
@@ -114,7 +165,7 @@ export default function Staff_DonationDrive() {
                 await api.post("/staff/donation-drives", form);
             }
             setShowModal(false);
-            fetchAll(); // ✅ refresh after save
+            fetchAll();
         } catch (err) {
             setModalError(err.response?.data?.message || "Failed to save.");
         } finally {
@@ -127,13 +178,13 @@ export default function Staff_DonationDrive() {
         if (!confirm("Delete this donation drive?")) return;
         try {
             await api.delete(`/staff/donation-drives/${id}`);
-            fetchAll(); // ✅ refresh after delete
+            fetchAll();
         } catch (err) {
             console.error("Delete error:", err);
         }
     };
 
-    // ── Status change — show confirmation first ───────────────────────────────
+    // ── Status change ─────────────────────────────────────────────────────────
     const requestStatusChange = (id, oldStatus, newStatus) => {
         if (newStatus === oldStatus) return;
         setConfirmStatus({ id, oldStatus, newStatus });
@@ -189,7 +240,7 @@ export default function Staff_DonationDrive() {
                 {/* TOOLBAR */}
                 <div className="dr-toolbar">
                     <div className="dr-filters">
-                        {["all", "Pending", "OnGoing", "Cancelled", "Done"].map((f) => (
+                        {["all", "OnGoing", "Cancelled", "Done"].map((f) => (
                             <button
                                 key={f}
                                 className={`dr-filter-tab ${filter === f ? "dr-filter-active" : ""}`}
@@ -229,20 +280,27 @@ export default function Staff_DonationDrive() {
                                 <th>DURATION DATE</th>
                                 <th>ADDRESS</th>
                                 <th>CONTACT PERSON</th>
-                                <th>NUMBER</th>
                                 <th>EMAIL</th>
                                 <th></th>
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
-                                <tr><td colSpan={10} className="dd-drive-empty">Loading…</td></tr>
+                                <tr><td colSpan={9} className="dd-drive-empty">Loading…</td></tr>
                             ) : visible.length === 0 ? (
-                                <tr><td colSpan={10} className="dd-drive-empty">No drives found.</td></tr>
+                                <tr><td colSpan={9} className="dd-drive-empty">No drives found.</td></tr>
                             ) : (
                                 visible.map((d) => {
-                                    const statusCfg = STATUS_CONFIG[d.status] ?? STATUS_CONFIG.Pending;
+                                    const statusCfg = STATUS_CONFIG[d.status] ?? STATUS_CONFIG.OnGoing;
                                     const typeCfg   = TYPE_CONFIG[d.type]     ?? TYPE_CONFIG.Food;
+
+                                    // ── Goal progress: current_amount comes from API (donations collected)
+                                    // d.current_amount is the sum of donations collected so far
+                                    const goalNum     = parseGoalNumber(d.goal);
+                                    const currentAmt  = d.current_amount ?? 0;
+                                    const progressPct = goalNum > 0
+                                        ? Math.min(100, Math.round((currentAmt / goalNum) * 100))
+                                        : 0;
 
                                     return (
                                         <tr key={d.id}>
@@ -268,7 +326,30 @@ export default function Staff_DonationDrive() {
                                                 </span>
                                             </td>
 
-                                            <td>{d.goal}</td>
+                                            {/* GOAL with progress */}
+                                            <td>
+                                                <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 140 }}>
+                                                    <span style={{ fontSize: 13 }}>{d.goal}</span>
+                                                    {goalNum > 0 && (
+                                                        <>
+                                                            {/* Progress bar */}
+                                                            <div style={{ height: 6, borderRadius: 99, background: "#e0e0e0", overflow: "hidden" }}>
+                                                                <div style={{
+                                                                    height: "100%",
+                                                                    width: `${progressPct}%`,
+                                                                    background: progressPct >= 100 ? "#2e7d32" : "#f4b942",
+                                                                    borderRadius: 99,
+                                                                    transition: "width 0.3s",
+                                                                }} />
+                                                            </div>
+                                                            {/* current / goal label */}
+                                                            <span style={{ fontSize: 11, color: "#888" }}>
+                                                                {currentAmt.toLocaleString()} / {goalNum.toLocaleString()}
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
 
                                             <td>
                                                 <span className="dd-drive-date-badge">
@@ -278,7 +359,7 @@ export default function Staff_DonationDrive() {
 
                                             <td>{d.address}</td>
                                             <td>{d.contact_person}</td>
-                                            <td>{d.contact}</td>
+                                            {/* NUMBER column removed */}
                                             <td><span className="dd-drive-email">{d.email}</span></td>
 
                                             {/* EDIT / DELETE */}
@@ -344,19 +425,32 @@ export default function Staff_DonationDrive() {
                         <h2 style={{ marginBottom: 20 }}>{editTarget ? "Edit Donation Drive" : "Add New Donation Drive"}</h2>
 
                         <label style={labelStyle}>Drive Title *</label>
-                        <input value={form.drive_title} onChange={(e) => setForm({ ...form, drive_title: e.target.value })} placeholder="Drive Title" style={inputStyle} />
+                        <input
+                            value={form.drive_title}
+                            onChange={(e) => setForm({ ...form, drive_title: e.target.value })}
+                            placeholder="Drive Title"
+                            style={inputStyle}
+                        />
 
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                             <div>
                                 <label style={labelStyle}>Type *</label>
-                                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} style={inputStyle}>
+                                <select
+                                    value={form.type}
+                                    onChange={(e) => handleTypeChange(e.target.value)}
+                                    style={inputStyle}
+                                >
                                     <option value="Food">Food</option>
                                     <option value="Financial">Financial</option>
                                 </select>
                             </div>
                             <div>
                                 <label style={labelStyle}>Status</label>
-                                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} style={inputStyle}>
+                                <select
+                                    value={form.status}
+                                    onChange={(e) => setForm({ ...form, status: e.target.value })}
+                                    style={inputStyle}
+                                >
                                     {Object.entries(STATUS_CONFIG).map(([k, v]) => (
                                         <option key={k} value={k}>{v.label}</option>
                                     ))}
@@ -364,44 +458,102 @@ export default function Staff_DonationDrive() {
                             </div>
                         </div>
 
+                        {/* Food Type field — only shown when type is Food */}
+                        {form.type === "Food" && (
+                            <>
+                                <label style={labelStyle}>Food Type</label>
+                                <input
+                                    value={form.food_type}
+                                    onChange={(e) => handleFoodTypeChange(e.target.value)}
+                                    placeholder="e.g. Dry Goods, Canned Goods"
+                                    style={inputStyle}
+                                />
+                            </>
+                        )}
+
                         <label style={labelStyle}>Goal *</label>
-                        <input value={form.goal} onChange={(e) => setForm({ ...form, goal: e.target.value })} placeholder="e.g. 500 Meals or ₱100,000" style={inputStyle} />
+                        <input
+                            value={form.goal}
+                            onChange={(e) => handleGoalChange(e.target.value)}
+                            placeholder={
+                                editTarget?.type === "Food"
+                                    ? `e.g. 300 for ${editTarget?.food_type || "Food Type"}`
+                                    : "e.g. ₱100,000"
+                            }
+                            style={inputStyle}
+                        />
+                        {/* Read-only preview of the locked suffix */}
+                        {form.type === "Food" && form.food_type && (
+                            <p style={{ fontSize: 11, color: "#888", margin: "4px 0 0 2px" }}>
+                                Suffix <strong>for {form.food_type}</strong> is auto-locked to the goal.
+                            </p>
+                        )}
 
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                             <div>
                                 <label style={labelStyle}>Start Date *</label>
-                                <input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} style={inputStyle} />
+                                <input
+                                    type="date"
+                                    value={form.start_date}
+                                    onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                                    style={inputStyle}
+                                />
                             </div>
                             <div>
                                 <label style={labelStyle}>End Date *</label>
-                                <input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} style={inputStyle} />
+                                <input
+                                    type="date"
+                                    value={form.end_date}
+                                    onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                                    style={inputStyle}
+                                />
                             </div>
                         </div>
 
                         <label style={labelStyle}>Address</label>
-                        <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Address" style={inputStyle} />
+                        <input
+                            value={form.address}
+                            onChange={(e) => setForm({ ...form, address: e.target.value })}
+                            placeholder="Address"
+                            style={inputStyle}
+                        />
 
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                             <div>
                                 <label style={labelStyle}>Contact Person</label>
-                                <input value={form.contact_person} onChange={(e) => setForm({ ...form, contact_person: e.target.value })} placeholder="Contact Person" style={inputStyle} />
+                                <input
+                                    value={form.contact_person}
+                                    onChange={(e) => setForm({ ...form, contact_person: e.target.value })}
+                                    placeholder="Contact Person"
+                                    style={inputStyle}
+                                />
                             </div>
+                            {/* Contact Number field removed */}
                             <div>
-                                <label style={labelStyle}>Contact Number</label>
-                                <input value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} placeholder="09XXXXXXXXX" style={inputStyle} />
+                                <label style={labelStyle}>Email</label>
+                                <input
+                                    value={form.email}
+                                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                                    placeholder="email@example.com"
+                                    style={inputStyle}
+                                />
                             </div>
                         </div>
-
-                        <label style={labelStyle}>Email</label>
-                        <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="email@example.com" style={inputStyle} />
 
                         {modalError && <p style={{ color: "red", fontSize: 13, marginTop: 8 }}>⚠️ {modalError}</p>}
 
                         <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-                            <button onClick={() => setShowModal(false)} style={{ flex: 1, padding: "10px", borderRadius: 999, background: "#fff", color: "#333", border: "1px solid #ccc", fontWeight: 600, cursor: "pointer" }}>
+                            <button
+                                onClick={() => setShowModal(false)}
+                                style={{ flex: 1, padding: "10px", borderRadius: 999, background: "#fff", color: "#333", border: "1px solid #ccc", fontWeight: 600, cursor: "pointer" }}
+                            >
                                 Cancel
                             </button>
-                            <button onClick={handleSave} disabled={saving} style={{ flex: 2, padding: "10px", borderRadius: 999, background: "#2e7d32", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}>
+                            <button
+                                onClick={handleSave}
+                                disabled={saving}
+                                style={{ flex: 2, padding: "10px", borderRadius: 999, background: "#2e7d32", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer" }}
+                            >
                                 {saving ? "Saving..." : editTarget ? "Save Changes" : "Create Drive"}
                             </button>
                         </div>
