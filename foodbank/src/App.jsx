@@ -21,6 +21,7 @@ import StaffServiceApproval from "./pages/Staff/Staff_ServiceApproval";
 import StaffDonationJourneyTracker from "./pages/Staff/Staff_DonationJourneyTracker"
 import StaffInventoryService from "./pages/Staff/Staff_InventoryService";
 import StaffInventoryFood from "./pages/Staff/Staff_InventoryFood";
+import StaffProfile from "./pages/Staff/Staff_Profile";
 
 import DonorDashboard from "./pages/Donor/Donor_Dashboard";
 import DonorProfileIndividual from "./pages/Donor/Donor_ProfileIndividual";
@@ -32,6 +33,7 @@ import DonorDonateFood from "./pages/Donor/Donor_Donate_Food";
 
 import AdminDashboard from "./pages/Admin/Admin_Dashboard";
 import AdminAccounts from "./pages/Admin/Admin_Accounts";
+import AdminProfile from "./pages/Admin/Admin_Profile";
 
 import BeneficiaryDashboard from "./pages/Beneficiary/Beneficiary_Dashboard";
 import BeneficiaryProfileIndividual from "./pages/Beneficiary/Beneficiary_ProfileIndividual";
@@ -110,6 +112,11 @@ function App() {
               <StaffInventoryFood />
             </ProtectedRoute>
           } />
+          <Route path="/staff/profile" element={
+            <ProtectedRoute allowedRoles={["staff"]}>
+              <StaffProfile />
+            </ProtectedRoute>
+          } />
 
           {/* ── DONOR ── */}
           <Route path="/donor/dashboard" element={
@@ -157,6 +164,11 @@ function App() {
           <Route path="/admin/accounts" element={
             <ProtectedRoute allowedRoles={["admin"]}>
               <AdminAccounts />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/profile" element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminProfile />
             </ProtectedRoute>
           } />
 

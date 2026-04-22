@@ -18,6 +18,15 @@ class FoodDonationRecord extends Model
         'time_slot_end',
         'status',
         'staff_notes',
+        'accepted_at',
+        'received_at',
+        'rejected_at',
+    ];
+
+    protected $casts = [
+        'accepted_at' => 'datetime',
+        'received_at' => 'datetime',
+        'rejected_at' => 'datetime',
     ];
 
     public function user()

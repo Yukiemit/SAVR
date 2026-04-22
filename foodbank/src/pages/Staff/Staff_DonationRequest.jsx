@@ -41,29 +41,7 @@ const FOOD_TYPES = [
     "Dry Goods",
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DUMMY INVENTORY DATA
-// TODO: Replace with real API call → api.get("/staff/inventory")
-// Expected shape per item:
-//   { id, food_name, food_type, stock, unit, expiration_date }
-// ─────────────────────────────────────────────────────────────────────────────
-const DUMMY_INVENTORY = [
-    { id: 1,  food_name: "Canned Sardines",     food_type: "Canned Goods",        stock: 500,  unit: "cans",  expiration_date: "2026-04-19" }, // expires tomorrow — red
-    { id: 2,  food_name: "Canned Corned Beef",  food_type: "Canned Goods",        stock: 300,  unit: "cans",  expiration_date: "2026-08-10" },
-    { id: 3,  food_name: "Canned Tuna",         food_type: "Canned Goods",        stock: 420,  unit: "cans",  expiration_date: "2027-01-05" },
-    { id: 4,  food_name: "White Rice",          food_type: "Grains & Cereals",    stock: 1000, unit: "kg",    expiration_date: "2026-12-31" },
-    { id: 5,  food_name: "Brown Rice",          food_type: "Grains & Cereals",    stock: 600,  unit: "kg",    expiration_date: "2026-11-20" },
-    { id: 6,  food_name: "Instant Noodles",     food_type: "Dry Goods",           stock: 800,  unit: "packs", expiration_date: "2026-06-15" },
-    { id: 7,  food_name: "Cooking Oil",         food_type: "Fats & Oils",         stock: 200,  unit: "liters",expiration_date: "2026-09-01" },
-    { id: 8,  food_name: "Pork Belly",          food_type: "Meat",                stock: 150,  unit: "kg",    expiration_date: "2026-04-20" }, // expires in 2 days
-    { id: 9,  food_name: "Tofu",                food_type: "Protein Alternatives",stock: 300,  unit: "packs", expiration_date: "2026-05-10" },
-    { id: 10, food_name: "Powdered Milk",       food_type: "Dairy",               stock: 250,  unit: "kg",    expiration_date: "2026-07-18" },
-    { id: 11, food_name: "Canned Pineapple",    food_type: "Canned Goods",        stock: 180,  unit: "cans",  expiration_date: "2027-05-30" },
-    { id: 12, food_name: "Mongo Beans",         food_type: "Dry Goods",           stock: 400,  unit: "kg",    expiration_date: "2026-10-10" },
-    { id: 13, food_name: "Banana",              food_type: "Fruits",              stock: 500,  unit: "pcs",   expiration_date: "2026-04-25" },
-    { id: 14, food_name: "Kangkong",            food_type: "Vegetables",          stock: 200,  unit: "kg",    expiration_date: "2026-04-22" },
-    { id: 15, food_name: "Brown Sugar",         food_type: "Sugars & Sweets",     stock: 300,  unit: "kg",    expiration_date: "2027-01-01" },
-];
+// Inventory is fetched from the real API inside FoodAllocationPanel
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -123,10 +101,13 @@ function FoodAllocationPanel({ selected, allocations, setAllocations }) {
     const [goodFor,      setGoodFor]      = useState("");
     const [typeFilter,   setTypeFilter]   = useState(primaryFoodType);
 
-    // TODO: Replace DUMMY_INVENTORY with API result:
-    //   const [inventory, setInventory] = useState([]);
-    //   useEffect(() => { api.get("/staff/inventory").then(r => setInventory(r.data)); }, []);
-    const inventory = DUMMY_INVENTORY;
+    // ── Real inventory from API (only items with stock > 0) ──
+    const [inventory, setInventory] = useState([]);
+    useEffect(() => {
+        api.get("/staff/inventory/food")
+            .then((r) => setInventory(r.data.filter((it) => it.stock > 0)))
+            .catch(console.error);
+    }, []);
 
     // Use the canonical food type list (not derived from inventory)
     const allFoodTypes = FOOD_TYPES;

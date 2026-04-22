@@ -438,7 +438,9 @@ function DonationCard({ donation, onAccept, onDecline, onReceived, onCancelled, 
   return (
     <div className={`djt-card${isCancelled ? " djt-card-cancelled" : ""}${isCompleted ? " djt-card-completed" : ""}`}>
       <div className="djt-card-header">
-        <span className={`djt-donor-badge ${donorBadgeClass}`}>{donor_name}</span>
+        <span className={`djt-donor-badge ${donorBadgeClass}`}>
+          <span className="djt-donor-label">Donor:</span> {donor_name}
+        </span>
         <button className="djt-view-details-btn" onClick={() => onViewDetails(donation)}>
           View More Details
         </button>
@@ -540,8 +542,10 @@ function BeneficiaryApprovalCard({ drive, onAccept, onDecline }) {
     <div className="djt-card djt-card-benef">
       {/* Card header */}
       <div className="djt-card-header">
-        <span className="djt-donor-badge djt-donor-badge-approval">{drive.donor_name}</span>
-        <span style={{ fontSize: 12, color: "#888", fontWeight: 600 }}>{drive.drive_title}</span>
+        <span className="djt-donor-badge djt-donor-badge-approval">{drive.drive_title}</span>
+        {drive.beneficiary_name && (
+          <span style={{ fontSize: 12, color: "#888", fontWeight: 600 }}>{drive.beneficiary_name}</span>
+        )}
       </div>
 
       {/* Items table */}
@@ -549,8 +553,8 @@ function BeneficiaryApprovalCard({ drive, onAccept, onDecline }) {
         <table className="djt-benef-table">
           <thead>
             <tr>
-              <th style={{ width: 160 }}></th>
-              <th>NO. OF REQUEST</th>
+              <th style={{ width: 160 }}>QTY THIS BATCH</th>
+              <th>RECEIVED / GOAL</th>
               <th>FOOD NAME</th>
               <th>EXP. DATE</th>
             </tr>
@@ -560,6 +564,10 @@ function BeneficiaryApprovalCard({ drive, onAccept, onDecline }) {
               const rem       = remaining(item);
               const qty       = inputQtys[item.id] ?? 0;
               const expToday  = isExpiringToday(item.expiration_date);
+              const pct       = item.goal_qty > 0
+                ? Math.min(100, Math.round((item.allocated_qty / item.goal_qty) * 100))
+                : 0;
+              const goalMet   = item.allocated_qty >= item.goal_qty;
               return (
                 <tr key={item.id}>
                   {/* Stepper */}
@@ -568,7 +576,7 @@ function BeneficiaryApprovalCard({ drive, onAccept, onDecline }) {
                       <button
                         className="djt-benef-stepper-btn"
                         onClick={() => setQty(item.id, qty - 1, item)}
-                        disabled={qty <= 0}
+                        disabled={qty <= 0 || rem <= 0}
                       >−</button>
                       <input
                         className="djt-benef-stepper-input"
@@ -577,6 +585,7 @@ function BeneficiaryApprovalCard({ drive, onAccept, onDecline }) {
                         max={rem}
                         value={qty}
                         onChange={(e) => setQty(item.id, e.target.value, item)}
+                        disabled={rem <= 0}
                       />
                       <button
                         className="djt-benef-stepper-btn"
@@ -585,13 +594,26 @@ function BeneficiaryApprovalCard({ drive, onAccept, onDecline }) {
                       >+</button>
                     </div>
                   </td>
-                  {/* No. of Request: allocated / goal */}
+                  {/* Received / Goal with progress bar */}
                   <td>
-                    <span className="djt-benef-goal">
+                    <span className="djt-benef-goal" style={goalMet ? { color: "#22c55e", fontWeight: 700 } : {}}>
                       <span className="djt-benef-goal-current">{item.allocated_qty.toLocaleString()}</span>
                       <span className="djt-benef-goal-sep">/</span>
                       <span className="djt-benef-goal-total">{item.goal_qty.toLocaleString()}</span>
+                      {goalMet && <span style={{ marginLeft: 4 }}>✓</span>}
                     </span>
+                    {/* Progress bar */}
+                    <div style={{
+                      height: 4, borderRadius: 2, background: "#e5e7eb",
+                      marginTop: 4, overflow: "hidden", minWidth: 80,
+                    }}>
+                      <div style={{
+                        height: "100%", borderRadius: 2,
+                        width: `${pct}%`,
+                        background: goalMet ? "#16a34a" : "#22c55e",
+                        transition: "width 0.3s",
+                      }} />
+                    </div>
                   </td>
                   {/* Food Name */}
                   <td style={{ fontWeight: 600, color: "#333" }}>{item.food_name}</td>
@@ -631,8 +653,8 @@ function BeneficiaryStatusCard({ drive, onReceived, onCancelled }) {
   const isInTransit = drive.overall_status === "in_transit";
 
   // Build the item summary string from allocated items (qty comes from allocated_qty)
-  const itemSummary = drive.items
-    .map((it) => `${it.food_name} | ${it.allocated_qty} pcs | Exp: ${it.expiration_date}`)
+  const itemSummary = (drive.items || [])
+    .map((it) => `${it.food_name} | ${it.allocated_qty} ${it.unit || 'pcs'} | Exp: ${it.expiration_date || '—'}`)
     .join("  ·  ");
 
   let donorBadgeClass = "djt-donor-badge-pending";
@@ -658,8 +680,10 @@ function BeneficiaryStatusCard({ drive, onReceived, onCancelled }) {
     <div className={`djt-card${isCancelled ? " djt-card-cancelled" : ""}${isCompleted ? " djt-card-completed" : ""}`}>
       {/* Card Header */}
       <div className="djt-card-header">
-        <span className={`djt-donor-badge ${donorBadgeClass}`}>{drive.donor_name}</span>
-        <span style={{ fontSize: 12, color: "#888", fontWeight: 600 }}>{drive.drive_title}</span>
+        <span className={`djt-donor-badge ${donorBadgeClass}`}>{drive.drive_title}</span>
+        {drive.beneficiary_name && (
+          <span style={{ fontSize: 12, color: "#888", fontWeight: 600 }}>{drive.beneficiary_name}</span>
+        )}
       </div>
 
       {/* Stage 1 — Preparing Donation (food list from allocated qty) */}
@@ -732,171 +756,136 @@ export default function Staff_DonationJourneyTracker() {
   const [mode, setMode] = useState("from_donor"); // "from_donor" | "to_beneficiary"
 
   // ── FROM DONOR state ───────────────────────────────────────────────────────
-  const [donations,      setDonations]      = useState(DUMMY_FROM_DONOR);
+  const [donations,      setDonations]      = useState([]);
   const [donorFilter,    setDonorFilter]    = useState("all");
   const [donorSearch,    setDonorSearch]    = useState("");
   const [detailDonation, setDetailDonation] = useState(null);
 
   // ── TO BENEFICIARY state ───────────────────────────────────────────────────
-  const [drives,         setDrives]         = useState(DUMMY_TO_BENEFICIARY);
+  const [drives,         setDrives]         = useState([]);
   const [benefFilter,    setBenefFilter]    = useState("all");
   const [benefSearch,    setBenefSearch]    = useState("");
 
-  const [loading, setLoading] = useState(false);
+  const [loadingDonor,  setLoadingDonor]  = useState(false);
+  const [loading,       setLoading]       = useState(false);
 
   // ── Toast ──────────────────────────────────────────────────────────────────
   const { toasts, addToast, dismiss } = useToast();
 
   // ── Fetch FROM DONOR ───────────────────────────────────────────────────────
-  // useEffect(() => {
-  //   if (mode !== "from_donor") return;
-  //   setLoading(true);
-  //   api.get("/staff/donations/journey/from-donor")
-  //     .then((res) => setDonations(res.data))
-  //     .catch(console.error)
-  //     .finally(() => setLoading(false));
-  // }, [mode]);
+  const fetchDonorJourney = useCallback(() => {
+    setLoadingDonor(true);
+    api.get("/staff/donations/journey/from-donor")
+      .then((res) => setDonations(res.data))
+      .catch(console.error)
+      .finally(() => setLoadingDonor(false));
+  }, []);
+
+  useEffect(() => {
+    if (mode !== "from_donor") return;
+    fetchDonorJourney();
+  }, [mode, fetchDonorJourney]);
 
   // ── Fetch TO BENEFICIARY ───────────────────────────────────────────────────
-  // useEffect(() => {
-  //   if (mode !== "to_beneficiary") return;
-  //   setLoading(true);
-  //   api.get("/staff/donations/journey/to-beneficiary")
-  //     .then((res) => setDrives(res.data))
-  //     .catch(console.error)
-  //     .finally(() => setLoading(false));
-  // }, [mode]);
+  const fetchBeneficiaryJourney = useCallback(() => {
+    setLoading(true);
+    api.get("/staff/donations/journey/to-beneficiary")
+      .then((res) => setDrives(res.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (mode !== "to_beneficiary") return;
+    fetchBeneficiaryJourney();
+  }, [mode, fetchBeneficiaryJourney]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // FROM DONOR actions
   // ─────────────────────────────────────────────────────────────────────────
-  const handleAccept = useCallback((id) => {
-    setDonations((cur) =>
-      cur.map((d) =>
-        d.id !== id ? d : {
-          ...d,
-          overall_status: "pending",
-          stages: {
-            ...d.stages,
-            preparing: { timestamp: new Date().toISOString(), status: "done" },
-            transit:   { timestamp: null, status: "awaiting_transit" },
-          },
-        }
-      )
-    );
-    addToast({ label: "Donation accepted", sub: "Moved to Delivery in Transit.", type: "success" });
-    // await api.patch(`/staff/donations/journey/${id}/accept`);
-  }, [addToast]);
+  const handleAccept = useCallback(async (id) => {
+    try {
+      await api.post(`/staff/donations/journey/from-donor/${id}/accept`);
+      addToast({ label: "Donation accepted", sub: "Moved to Delivery in Transit.", type: "success" });
+      fetchDonorJourney();
+    } catch (err) {
+      addToast({ label: "Failed to accept", sub: err.response?.data?.message || "Try again.", type: "error" });
+    }
+  }, [addToast, fetchDonorJourney]);
 
-  const handleDecline = useCallback((id) => {
-    setDonations((cur) => cur.filter((d) => d.id !== id));
-    addToast({ label: "Donation declined", sub: "The donation has been removed.", type: "error" });
-    // await api.delete(`/staff/donations/journey/${id}`);
-  }, [addToast]);
+  const handleDecline = useCallback(async (id) => {
+    try {
+      await api.post(`/staff/donations/journey/from-donor/${id}/decline`);
+      addToast({ label: "Donation declined", sub: "The donation has been rejected.", type: "error" });
+      fetchDonorJourney();
+    } catch (err) {
+      addToast({ label: "Failed to decline", sub: err.response?.data?.message || "Try again.", type: "error" });
+    }
+  }, [addToast, fetchDonorJourney]);
 
-  const handleReceived = useCallback((id) => {
-    const now = new Date().toISOString();
-    setDonations((cur) =>
-      cur.map((d) =>
-        d.id !== id ? d : {
-          ...d,
-          overall_status: "completed",
-          stages: {
-            ...d.stages,
-            transit:  { timestamp: now, status: "done" },
-            received: { timestamp: now, status: "done" },
-          },
-        }
-      )
-    );
-    addToast({ label: "Donation received", sub: "Marked as completed.", type: "success" });
-    // await api.patch(`/staff/donations/journey/${id}/received`);
-  }, [addToast]);
+  const handleReceived = useCallback(async (id) => {
+    try {
+      await api.post(`/staff/donations/journey/from-donor/${id}/received`);
+      addToast({ label: "Donation received", sub: "Items added to food inventory.", type: "success" });
+      fetchDonorJourney();
+    } catch (err) {
+      addToast({ label: "Failed to mark received", sub: err.response?.data?.message || "Try again.", type: "error" });
+    }
+  }, [addToast, fetchDonorJourney]);
 
-  const handleCancelled = useCallback((id) => {
-    const now = new Date().toISOString();
-    setDonations((cur) =>
-      cur.map((d) =>
-        d.id !== id ? d : {
-          ...d,
-          overall_status: "cancelled",
-          stages: {
-            ...d.stages,
-            transit: { timestamp: now, status: "cancelled" },
-          },
-        }
-      )
-    );
-    addToast({ label: "Transit cancelled", sub: "Donation marked as cancelled.", type: "warning" });
-    // await api.patch(`/staff/donations/journey/${id}/cancel`);
-  }, [addToast]);
+  const handleCancelled = useCallback(async (id) => {
+    try {
+      await api.post(`/staff/donations/journey/from-donor/${id}/cancel-transit`);
+      addToast({ label: "Transit cancelled", sub: "Donation marked as cancelled.", type: "warning" });
+      fetchDonorJourney();
+    } catch (err) {
+      addToast({ label: "Failed to cancel", sub: err.response?.data?.message || "Try again.", type: "error" });
+    }
+  }, [addToast, fetchDonorJourney]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // TO BENEFICIARY actions
   // ─────────────────────────────────────────────────────────────────────────
-  const handleBenefAccept = useCallback((driveId, allocations) => {
-    setDrives((cur) =>
-      cur.map((d) => {
-        if (d.id !== driveId) return d;
-        // Update allocated_qty for each item based on what was input
-        const updatedItems = d.items.map((item) => {
-          const alloc = allocations.find((a) => a.item_id === item.id);
-          const addedQty = alloc ? alloc.qty : 0;
-          return {
-            ...item,
-            allocated_qty: item.allocated_qty + addedQty,
-          };
-        });
-        // Check if all goals are met → in_transit, else keep for_approval with updated counts
-        const allMet = updatedItems.every((it) => it.allocated_qty >= it.goal_qty);
-        return {
-          ...d,
-          items: updatedItems,
-          overall_status: allMet ? "in_transit" : "for_approval",
-        };
-      })
-    );
-    addToast({ label: "Allocation accepted", sub: "Drive moved to In Transit.", type: "success" });
-    // await api.post(`/staff/donations/journey/to-beneficiary/${driveId}/accept`, { allocations });
-  }, [addToast]);
+  const handleBenefAccept = useCallback(async (driveId, allocations) => {
+    try {
+      await api.post(`/staff/donations/journey/to-beneficiary/${driveId}/accept`, { allocations });
+      addToast({ label: "Delivery created", sub: "Items are now In Transit. Drive stays For Approval until goal is met.", type: "success" });
+      fetchBeneficiaryJourney();
+    } catch (err) {
+      addToast({ label: "Failed to accept", sub: err.response?.data?.message || "Try again.", type: "error" });
+    }
+  }, [addToast, fetchBeneficiaryJourney]);
 
-  const handleBenefDecline = useCallback((driveId) => {
-    setDrives((cur) =>
-      cur.map((d) =>
-        d.id !== driveId ? d : { ...d, overall_status: "cancelled" }
-      )
-    );
-    addToast({ label: "Drive declined", sub: "Moved to Cancelled.", type: "error" });
-    // await api.post(`/staff/donations/journey/to-beneficiary/${driveId}/decline`);
-  }, [addToast]);
+  const handleBenefDecline = useCallback(async (driveId) => {
+    try {
+      await api.post(`/staff/donations/journey/to-beneficiary/${driveId}/decline`);
+      addToast({ label: "Drive declined", sub: "Drive and any active deliveries cancelled.", type: "error" });
+      fetchBeneficiaryJourney();
+    } catch (err) {
+      addToast({ label: "Failed to decline", sub: err.response?.data?.message || "Try again.", type: "error" });
+    }
+  }, [addToast, fetchBeneficiaryJourney]);
 
-  const handleBenefReceived = useCallback((driveId) => {
-    setDrives((cur) =>
-      cur.map((d) =>
-        d.id !== driveId ? d : {
-          ...d,
-          overall_status: "completed",
-          received_at: new Date().toISOString(),
-        }
-      )
-    );
-    addToast({ label: "Donation received", sub: "Drive marked as completed.", type: "success" });
-    // await api.post(`/staff/donations/journey/to-beneficiary/${driveId}/received`);
-  }, [addToast]);
+  // deliveryId is the ID of the DonationDelivery record (not the drive)
+  const handleBenefReceived = useCallback(async (deliveryId) => {
+    try {
+      await api.post(`/staff/donations/journey/deliveries/${deliveryId}/received`);
+      addToast({ label: "Delivery received", sub: "Inventory deducted and progress updated.", type: "success" });
+      fetchBeneficiaryJourney();
+    } catch (err) {
+      addToast({ label: "Failed to mark received", sub: err.response?.data?.message || "Try again.", type: "error" });
+    }
+  }, [addToast, fetchBeneficiaryJourney]);
 
-  const handleBenefCancelled = useCallback((driveId) => {
-    setDrives((cur) =>
-      cur.map((d) =>
-        d.id !== driveId ? d : {
-          ...d,
-          overall_status: "cancelled",
-          transit_at: new Date().toISOString(),
-        }
-      )
-    );
-    addToast({ label: "Transit cancelled", sub: "Drive marked as cancelled.", type: "warning" });
-    // await api.post(`/staff/donations/journey/to-beneficiary/${driveId}/cancel`);
-  }, [addToast]);
+  const handleBenefCancelled = useCallback(async (deliveryId) => {
+    try {
+      await api.post(`/staff/donations/journey/deliveries/${deliveryId}/cancel`);
+      addToast({ label: "Delivery cancelled", sub: "Only this delivery was cancelled. Drive stays For Approval.", type: "warning" });
+      fetchBeneficiaryJourney();
+    } catch (err) {
+      addToast({ label: "Failed to cancel", sub: err.response?.data?.message || "Try again.", type: "error" });
+    }
+  }, [addToast, fetchBeneficiaryJourney]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // FILTER — FROM DONOR
@@ -923,22 +912,23 @@ export default function Staff_DonationJourneyTracker() {
 
   // ─────────────────────────────────────────────────────────────────────────
   // FILTER — TO BENEFICIARY
+  // drives[] now contains mixed record_type: 'drive' | 'delivery'
   // ─────────────────────────────────────────────────────────────────────────
   const filteredDrives = drives.filter((d) => {
     const matchFilter =
       benefFilter === "all"          ? true :
-      benefFilter === "for_approval" ? d.overall_status === "for_approval" :
-      benefFilter === "in_transit"   ? d.overall_status === "in_transit"   :
-      benefFilter === "completed"    ? d.overall_status === "completed"    :
-      benefFilter === "cancelled"    ? d.overall_status === "cancelled"    :
+      benefFilter === "for_approval" ? (d.record_type === "drive"    && d.overall_status === "for_approval") :
+      benefFilter === "in_transit"   ? (d.record_type === "delivery" && d.overall_status === "in_transit")   :
+      benefFilter === "completed"    ? (d.record_type === "drive"    && d.overall_status === "completed")    :
+      benefFilter === "cancelled"    ? (d.record_type === "drive"    && d.overall_status === "cancelled")    :
       true;
 
     const q = benefSearch.toLowerCase();
     const matchSearch =
       !q ||
-      d.donor_name.toLowerCase().includes(q) ||
-      d.drive_title.toLowerCase().includes(q) ||
-      d.items.some((it) => it.food_name.toLowerCase().includes(q));
+      d.drive_title?.toLowerCase().includes(q) ||
+      d.beneficiary_name?.toLowerCase().includes(q) ||
+      d.items?.some((it) => it.food_name.toLowerCase().includes(q));
 
     return matchFilter && matchSearch;
   });
@@ -1009,7 +999,7 @@ export default function Staff_DonationJourneyTracker() {
               </div>
             </div>
 
-            {loading ? (
+            {loadingDonor ? (
               <p className="djt-empty">Loading donations…</p>
             ) : filteredDonations.length === 0 ? (
               <p className="djt-empty">No donations found.</p>
@@ -1064,23 +1054,40 @@ export default function Staff_DonationJourneyTracker() {
               <p className="djt-empty">No drives found.</p>
             ) : (
               <div className="djt-cards-list">
-                {filteredDrives.map((d) =>
-                  d.overall_status === "for_approval" ? (
-                    <BeneficiaryApprovalCard
-                      key={d.id}
-                      drive={d}
-                      onAccept={handleBenefAccept}
-                      onDecline={handleBenefDecline}
-                    />
-                  ) : (
+                {filteredDrives.map((d) => {
+                  // Drive record in For Approval → show stepper input card
+                  if (d.record_type === "drive" && d.overall_status === "for_approval") {
+                    return (
+                      <BeneficiaryApprovalCard
+                        key={`drive-${d.id}`}
+                        drive={d}
+                        onAccept={handleBenefAccept}
+                        onDecline={handleBenefDecline}
+                      />
+                    );
+                  }
+                  // Delivery record in In Transit → show status card with Received/Cancel buttons
+                  // Pass delivery.id so buttons call the delivery-level routes
+                  if (d.record_type === "delivery" && d.overall_status === "in_transit") {
+                    return (
+                      <BeneficiaryStatusCard
+                        key={`delivery-${d.id}`}
+                        drive={d}
+                        onReceived={handleBenefReceived}
+                        onCancelled={handleBenefCancelled}
+                      />
+                    );
+                  }
+                  // Drive record Completed / Cancelled → show status card (no action buttons)
+                  return (
                     <BeneficiaryStatusCard
-                      key={d.id}
+                      key={`drive-${d.id}`}
                       drive={d}
                       onReceived={handleBenefReceived}
                       onCancelled={handleBenefCancelled}
                     />
-                  )
-                )}
+                  );
+                })}
               </div>
             )}
           </>

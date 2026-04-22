@@ -23,13 +23,20 @@ const EMPTY_FORM = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Parse the numeric portion out of a goal string like "300 for Dry Goods"
- * Returns the number, or 0 if not found.
+ * Parse a goal string like "300 for Dry Goods"
+ * Returns { num, suffix } where suffix is "for Dry Goods" or ""
  */
+function parseGoal(goalStr) {
+    if (!goalStr) return { num: 0, suffix: "" };
+    const match = goalStr.match(/^(\d[\d,]*)(\s+.+)?$/);
+    if (!match) return { num: 0, suffix: goalStr.trim() };
+    const num    = Number(match[1].replace(/,/g, ""));
+    const suffix = match[2] ? match[2].trim() : "";
+    return { num, suffix };
+}
+
 function parseGoalNumber(goalStr) {
-    if (!goalStr) return 0;
-    const match = goalStr.match(/^(\d+(\.\d+)?)/);
-    return match ? Number(match[1]) : 0;
+    return parseGoal(goalStr).num;
 }
 
 export default function Staff_DonationDrive() {
@@ -294,13 +301,15 @@ export default function Staff_DonationDrive() {
                                     const statusCfg = STATUS_CONFIG[d.status] ?? STATUS_CONFIG.OnGoing;
                                     const typeCfg   = TYPE_CONFIG[d.type]     ?? TYPE_CONFIG.Food;
 
-                                    // ── Goal progress: current_amount comes from API (donations collected)
-                                    // d.current_amount is the sum of donations collected so far
-                                    const goalNum     = parseGoalNumber(d.goal);
+                                    // ── Goal progress ──────────────────────────────────────
+                                    const { num: parsedNum, suffix: goalSuffix } = parseGoal(d.goal);
+                                    // If goal string has no number, fall back to sum of drive item goal_qty
+                                    const goalNum     = parsedNum > 0 ? parsedNum : (d.computed_goal ?? 0);
                                     const currentAmt  = d.current_amount ?? 0;
                                     const progressPct = goalNum > 0
-                                        ? Math.min(100, Math.round((currentAmt / goalNum) * 100))
+                                        ? Math.min(100, (currentAmt / goalNum) * 100)
                                         : 0;
+                                    const isComplete  = goalNum > 0 && currentAmt >= goalNum;
 
                                     return (
                                         <tr key={d.id}>
@@ -328,25 +337,65 @@ export default function Staff_DonationDrive() {
 
                                             {/* GOAL with progress */}
                                             <td>
-                                                <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 140 }}>
-                                                    <span style={{ fontSize: 13 }}>{d.goal}</span>
-                                                    {goalNum > 0 && (
+                                                <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 170 }}>
+                                                    {goalNum > 0 ? (
                                                         <>
-                                                            {/* Progress bar */}
-                                                            <div style={{ height: 6, borderRadius: 99, background: "#e0e0e0", overflow: "hidden" }}>
+                                                            {/* Goal number + optional suffix on same line */}
+                                                            <div style={{ display: "flex", alignItems: "baseline", gap: 5, flexWrap: "wrap" }}>
+                                                                <span style={{
+                                                                    fontSize: 15,
+                                                                    fontWeight: 800,
+                                                                    color: isComplete ? "#16a34a" : "#222",
+                                                                    letterSpacing: "-0.3px",
+                                                                }}>
+                                                                    {goalNum.toLocaleString()}
+                                                                </span>
+                                                                {goalSuffix && (
+                                                                    <span style={{ fontSize: 11, color: "#999", fontWeight: 500 }}>
+                                                                        {goalSuffix}
+                                                                    </span>
+                                                                )}
+                                                                {isComplete && (
+                                                                    <span style={{ fontSize: 11, color: "#16a34a", fontWeight: 700 }}>✓</span>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Progress bar track */}
+                                                            <div style={{
+                                                                height: 7,
+                                                                borderRadius: 99,
+                                                                background: "#e5e7eb",
+                                                                overflow: "hidden",
+                                                            }}>
                                                                 <div style={{
                                                                     height: "100%",
                                                                     width: `${progressPct}%`,
-                                                                    background: progressPct >= 100 ? "#2e7d32" : "#f4b942",
+                                                                    background: isComplete
+                                                                        ? "linear-gradient(90deg, #16a34a, #22c55e)"
+                                                                        : "linear-gradient(90deg, #22c55e, #4ade80)",
                                                                     borderRadius: 99,
-                                                                    transition: "width 0.3s",
+                                                                    transition: "width 0.5s ease",
+                                                                    minWidth: progressPct > 0 ? 4 : 0,
                                                                 }} />
                                                             </div>
+
                                                             {/* current / goal label */}
-                                                            <span style={{ fontSize: 11, color: "#888" }}>
+                                                            <span style={{
+                                                                fontSize: 11,
+                                                                color: isComplete ? "#16a34a" : "#9ca3af",
+                                                                fontWeight: isComplete ? 700 : 400,
+                                                            }}>
                                                                 {currentAmt.toLocaleString()} / {goalNum.toLocaleString()}
+                                                                {isComplete && " · Complete"}
                                                             </span>
                                                         </>
+                                                    ) : goalSuffix ? (
+                                                        /* Goal is text-only, no number — show as label */
+                                                        <span style={{ fontSize: 12, color: "#aaa", fontStyle: "italic" }}>
+                                                            {goalSuffix}
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{ fontSize: 13, color: "#ccc" }}>—</span>
                                                     )}
                                                 </div>
                                             </td>

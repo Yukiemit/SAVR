@@ -3,10 +3,11 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use App\Models\FinancialDonationRecord;
 use App\Models\FinancialDonation;
 use App\Services\PayMongoService;
-use Illuminate\Support\Facades\Log;
 
 class FinancialDonationController extends Controller
 {
@@ -231,6 +232,9 @@ class FinancialDonationController extends Controller
             'staff_notes' => $request->notes ?? null,
         ]);
 
+        Cache::forget('financial_donation_record_stats');
+        Cache::forget('staff_dashboard_stats');
+
         return response()->json([
             'message' => 'Financial donation approved. Payment confirmed in system.',
         ]);
@@ -256,6 +260,8 @@ class FinancialDonationController extends Controller
             'staff_notes' => $request->notes ?? null,
         ]);
 
+        Cache::forget('financial_donation_record_stats');
+
         return response()->json([
             'message' => 'Financial donation rejected. Donor will be refunded.',
         ]);
@@ -266,13 +272,14 @@ class FinancialDonationController extends Controller
     // ══════════════════════════════════════════════════════════════════
     public function getRecordStats()
     {
-        return response()->json([
-            'pending'            => FinancialDonationRecord::where('status', 'pending')->count(),
-            'approved'           => FinancialDonationRecord::where('status', 'approved')->count(),
-            'rejected'           => FinancialDonationRecord::where('status', 'rejected')->count(),
-            'total_amount'       => FinancialDonation::sum('amount'),
-            'paymongo_amount'    => FinancialDonation::where('payment_type', 'paymongo')->sum('amount'),
-            'manual_amount'      => FinancialDonation::where('payment_type', 'manual')->sum('amount'),
+        $stats = Cache::remember('financial_donation_record_stats', 15, fn() => [
+            'pending'         => FinancialDonationRecord::where('status', 'pending')->count(),
+            'approved'        => FinancialDonationRecord::where('status', 'approved')->count(),
+            'rejected'        => FinancialDonationRecord::where('status', 'rejected')->count(),
+            'total_amount'    => FinancialDonation::sum('amount'),
+            'paymongo_amount' => FinancialDonation::where('payment_type', 'paymongo')->sum('amount'),
+            'manual_amount'   => FinancialDonation::where('payment_type', 'manual')->sum('amount'),
         ]);
+        return response()->json($stats);
     }
 }

@@ -46,7 +46,7 @@ export default function Admin_Dashboard() {
 
   // ── State ─────────────────────────────────────────────────────────────────
   const [stats, setStats]         = useState({ total_donations: 0, meals_served: 0, active_drives: 0 });
-  const [adminName, setAdminName] = useState("Administrator");
+  const [adminName, setAdminName] = useState("");
   const [drives, setDrives]       = useState([]);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [selectedDrive, setSelectedDrive] = useState(null);
@@ -175,7 +175,7 @@ export default function Admin_Dashboard() {
             <div className="sd-banner-overlay" />
             <div className="sd-banner-content">
               <p className="sd-banner-greeting">Good Day!</p>
-              <h1 className="sd-banner-name">{adminName}</h1>
+              <h1 className="sd-banner-name">{loading ? "\u00A0" : (adminName || "Administrator")}</h1>
               <p className="sd-banner-meta">Administrative Dashboard</p>
               <p className="sd-banner-sub">
                 Here's your system overview — keep driving the mission forward.

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 const navItems = [
@@ -57,6 +57,7 @@ export default function NavBar_Staff() {
   const [unreadCount,    setUnreadCount]    = useState(0);
   const [notifLoading,   setNotifLoading]   = useState(false);
   const location  = useLocation();
+  const navigate  = useNavigate();
   const bellRef   = useRef(null);
 
   useEffect(() => {
@@ -308,8 +309,14 @@ export default function NavBar_Staff() {
 
         {/* STAFF NAME + LOGOUT */}
         <div className="user-navbar-user">
-          <span className="material-symbols-rounded user-navbar-avatar">account_circle</span>
-          <span className="user-navbar-name">{staffName}</span>
+          <button
+            className="user-navbar-profile-btn"
+            onClick={() => navigate("/staff/profile")}
+            title="Edit Profile"
+          >
+            <span className="material-symbols-rounded user-navbar-avatar">account_circle</span>
+            <span className="user-navbar-name">{staffName}</span>
+          </button>
           <button className="user-navbar-logout" onClick={handleLogout} title="Logout">
             <span className="material-symbols-rounded">logout</span>
           </button>

@@ -8,6 +8,8 @@ use App\Models\Donor;
 use App\Models\DonorOrganization;
 use App\Models\Beneficiary;
 use App\Models\BeneficiaryOrganization;
+use App\Models\Staff;
+use App\Models\Admin;
 use App\Mail\OtpMail;
 use App\Mail\PasswordResetMail;
 use Illuminate\Support\Facades\Hash;
@@ -24,6 +26,28 @@ class AuthController extends Controller
         Mail::to($user->email)->send(new OtpMail($otp, $user->name));
     }
 
+    /**
+     * If the email already exists but was never verified, delete that
+     * stale record so the new registration can proceed cleanly.
+     * Throws a validation error if the email belongs to a verified account.
+     */
+    private function clearUnverifiedOrFail(string $email): void
+    {
+        $existing = User::where('email', $email)->first();
+        if (!$existing) return;
+
+        if ($existing->email_verified_at) {
+            // Already a real account — surface the normal "taken" error
+            abort(response()->json([
+                'message' => 'The given data was invalid.',
+                'errors'  => ['email' => ['The email has already been taken.']],
+            ], 422));
+        }
+
+        // Unverified stale record — remove it so registration can proceed
+        $existing->delete();
+    }
+
     public function register(Request $request)
     {
         $role = $request->role;
@@ -34,9 +58,10 @@ class AuthController extends Controller
                 'last_name'   => 'required|string',
                 'middle_name' => 'nullable|string',
                 'suffix'      => 'nullable|string',
-                'email'       => 'required|email|unique:users',
+                'email'       => 'required|email',
                 'password'    => 'required|min:6|confirmed',
             ]);
+            $this->clearUnverifiedOrFail($request->email);
             $user = User::create([
                 'name'         => $request->first_name . ' ' . $request->last_name,
                 'email'        => $request->email,
@@ -63,9 +88,10 @@ class AuthController extends Controller
         } elseif ($role === 'donor_organization') {
             $request->validate([
                 'org_name' => 'required|string',
-                'email'    => 'required|email|unique:users',
+                'email'    => 'required|email',
                 'password' => 'required|min:6|confirmed',
             ]);
+            $this->clearUnverifiedOrFail($request->email);
             $user = User::create([
                 'name'         => $request->org_name,
                 'email'        => $request->email,
@@ -88,9 +114,10 @@ class AuthController extends Controller
                 'last_name'   => 'required|string',
                 'middle_name' => 'nullable|string',
                 'suffix'      => 'nullable|string',
-                'email'       => 'required|email|unique:users',
+                'email'       => 'required|email',
                 'password'    => 'required|min:6|confirmed',
             ]);
+            $this->clearUnverifiedOrFail($request->email);
             $user = User::create([
                 'name'         => $request->first_name . ' ' . $request->last_name,
                 'email'        => $request->email,
@@ -117,9 +144,10 @@ class AuthController extends Controller
         } elseif ($role === 'beneficiary_organization') {
             $request->validate([
                 'org_name' => 'required|string',
-                'email'    => 'required|email|unique:users',
+                'email'    => 'required|email',
                 'password' => 'required|min:6|confirmed',
             ]);
+            $this->clearUnverifiedOrFail($request->email);
             $user = User::create([
                 'name'         => $request->org_name,
                 'email'        => $request->email,
@@ -234,7 +262,22 @@ class AuthController extends Controller
                 }
             }
 
+            // Clear pending_data AND profile fields from users —
+            // profile data now lives exclusively in the role-specific table
             $user->pending_data = null;
+            $user->first_name   = null;
+            $user->middle_name  = null;
+            $user->last_name    = null;
+            $user->suffix       = null;
+            $user->gender       = null;
+            $user->dob          = null;
+            $user->house        = null;
+            $user->street       = null;
+            $user->barangay     = null;
+            $user->city         = null;
+            $user->province     = null;
+            $user->zip          = null;
+            $user->contact      = null;
             $user->save();
 
             return response()->json(['message' => 'Email verified successfully!']);
@@ -313,22 +356,68 @@ class AuthController extends Controller
     public function createStaff(Request $request)
     {
         $request->validate([
-            'name'     => 'required|string',
-            'username' => 'required|string|unique:users,username',
-            'password' => 'required|min:6|confirmed',
+            'first_name' => 'required|string|max:100',
+            'last_name'  => 'required|string|max:100',
+            'username'   => 'required|string|unique:users,username',
+            'password'   => 'required|min:6|confirmed',
+            'department' => 'nullable|string|max:100',
         ]);
 
-        $staff = User::create([
-            'name'              => $request->name,
+        $fullName = trim("{$request->first_name} {$request->last_name}");
+
+        $user = User::create([
+            'name'              => $fullName,
             'username'          => $request->username,
             'password'          => Hash::make($request->password),
             'role'              => 'staff',
             'email_verified_at' => now(),
         ]);
 
+        // Create staff profile row
+        Staff::create([
+            'user_id'    => $user->id,
+            'first_name' => $request->first_name,
+            'last_name'  => $request->last_name,
+            'department' => $request->department,
+        ]);
+
         return response()->json([
             'message' => 'Staff account created successfully.',
-            'staff'   => $staff,
+            'staff'   => $user,
+        ], 201);
+    }
+
+    public function createAdmin(Request $request)
+    {
+        $request->validate([
+            'first_name' => 'required|string|max:100',
+            'last_name'  => 'required|string|max:100',
+            'username'   => 'required|string|unique:users,username',
+            'password'   => 'required|min:6|confirmed',
+            'department' => 'nullable|string|max:100',
+        ]);
+
+        $fullName = trim("{$request->first_name} {$request->last_name}");
+
+        $user = User::create([
+            'name'              => $fullName,
+            'username'          => $request->username,
+            'password'          => Hash::make($request->password),
+            'role'              => 'admin',
+            'email_verified_at' => now(),
+        ]);
+
+        // Create admin profile row
+        Admin::create([
+            'user_id'    => $user->id,
+            'first_name' => $request->first_name,
+            'last_name'  => $request->last_name,
+            'department' => $request->department,
+        ]);
+
+        return response()->json([
+            'message' => 'Admin account created successfully.',
+            'admin'   => $user,
         ], 201);
     }
 

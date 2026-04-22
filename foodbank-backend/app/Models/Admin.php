@@ -4,8 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Staff extends Model
+class Admin extends Model
 {
+    protected $table = 'admins';
+
     protected $fillable = [
         'user_id',
         'first_name',
@@ -14,12 +16,6 @@ class Staff extends Model
         'suffix',
         'gender',
         'dob',
-        'house',
-        'street',
-        'barangay',
-        'city',
-        'province',
-        'zip',
         'contact',
         'department',
     ];

@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use App\Models\FoodDonation;
 use App\Models\FoodDonationItem;
 use App\Models\FoodDonationRecord;
 use App\Models\FoodDonationRecordItem;
+use App\Models\FoodInventory;
 
 class FoodDonationController extends Controller
 {
@@ -157,6 +159,9 @@ class FoodDonationController extends Controller
             'staff_notes' => $request->notes ?? null,
         ]);
 
+        Cache::forget('food_donation_record_stats');
+        Cache::forget('staff_dashboard_stats');
+
         return response()->json([
             'message'  => 'Donation approved and added to inventory.',
             'donation' => $donation->load('items'),
@@ -179,6 +184,8 @@ class FoodDonationController extends Controller
             'staff_notes' => $request->notes ?? null,
         ]);
 
+        Cache::forget('food_donation_record_stats');
+
         return response()->json(['message' => 'Donation record rejected.']);
     }
 
@@ -187,10 +194,225 @@ class FoodDonationController extends Controller
     // ══════════════════════════════════════════════════════════════════
     public function getRecordStats()
     {
-        return response()->json([
+        $stats = Cache::remember('food_donation_record_stats', 15, fn() => [
             'pending'  => FoodDonationRecord::where('status', 'pending')->count(),
             'approved' => FoodDonationRecord::where('status', 'approved')->count(),
             'rejected' => FoodDonationRecord::where('status', 'rejected')->count(),
         ]);
+        return response()->json($stats);
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // DJT — FROM DONOR
+    // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * GET /staff/donations/journey/from-donor
+     * Returns all food donation records shaped for the DJT "From Donor" view.
+     * Status map:
+     *   pending  → awaiting_accept  (For Approval)
+     *   accepted → awaiting_transit (In Transit)
+     *   received → completed
+     *   rejected → cancelled
+     *   approved → completed (legacy)
+     */
+    public function getDonorJourney()
+    {
+        $records = FoodDonationRecord::with(['items', 'user'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json($records->map(function ($r) {
+            $status = $r->status;
+
+            // Map to DJT overall_status
+            $overallStatus = match ($status) {
+                'pending'  => 'pending',
+                'accepted' => 'pending',   // still "pending" overall but transit stage is active
+                'received' => 'completed',
+                'approved' => 'completed', // legacy
+                'rejected' => 'cancelled',
+                default    => 'pending',
+            };
+
+            // Safely read timestamps — columns may not exist if migration hasn't run
+            $acceptedAt = null;
+            $receivedAt = null;
+            try {
+                $acceptedAt = $r->accepted_at?->toISOString();
+                $receivedAt = $r->received_at?->toISOString();
+            } catch (\Exception $e) {
+                // Columns not yet migrated — use updated_at as fallback
+                if ($status === 'accepted') {
+                    $acceptedAt = $r->updated_at?->toISOString();
+                } elseif ($status === 'received') {
+                    $receivedAt = $r->updated_at?->toISOString();
+                }
+            }
+
+            // Build stages
+            $stages = [
+                'preparing' => [
+                    'timestamp' => $acceptedAt,
+                    'status'    => match ($status) {
+                        'pending'  => 'awaiting_accept',
+                        'rejected' => 'cancelled',
+                        default    => 'done',
+                    },
+                ],
+                'transit' => [
+                    'timestamp' => $receivedAt ?? $acceptedAt,
+                    'status'    => match ($status) {
+                        'pending'  => 'pending',
+                        'accepted' => 'awaiting_transit',
+                        'received' => 'done',
+                        'approved' => 'done',
+                        'rejected' => 'cancelled',
+                        default    => 'pending',
+                    },
+                ],
+                'received' => [
+                    'timestamp' => $receivedAt,
+                    'status'    => in_array($status, ['received', 'approved']) ? 'done' : 'pending',
+                ],
+            ];
+
+            $addressLine = $r->mode === 'pickup'
+                ? $r->pickup_address
+                : $r->delivery_address;
+
+            return [
+                'id'              => $r->id,
+                'donor_name'      => trim(($r->user?->first_name ?? '') . ' ' . ($r->user?->last_name ?? '')) ?: ($r->user?->name ?? 'Unknown Donor'),
+                'overall_status'  => $overallStatus,
+                'mode'            => $r->mode,
+                'pickup_address'  => $addressLine,
+                'preferred_date'  => $r->preferred_date,
+                'time_slot_start' => $r->time_slot_start,
+                'time_slot_end'   => $r->time_slot_end,
+                'stages'          => $stages,
+                'items'           => $r->items->map(fn($it) => [
+                    'id'              => $it->id,
+                    'food_name'       => $it->food_name,
+                    'quantity'        => $it->quantity,
+                    'unit'            => $it->unit,
+                    'category'        => $it->category,
+                    'expiration_date' => $it->expiration_date,
+                    'special_notes'   => $it->special_notes,
+                    'photo_url'       => $it->photo_path
+                        ? asset("storage/{$it->photo_path}")
+                        : null,
+                ]),
+            ];
+        }));
+    }
+
+    /**
+     * POST /staff/donations/journey/from-donor/{id}/accept
+     * Staff accepts the donation — moves to "In Transit" stage.
+     * Records accepted_at timestamp. Does NOT touch inventory yet.
+     */
+    public function acceptDonorJourney($id)
+    {
+        $record = FoodDonationRecord::findOrFail($id);
+
+        if ($record->status !== 'pending') {
+            return response()->json(['message' => 'Donation is not pending.'], 422);
+        }
+
+        $now = now();
+
+        $record->update([
+            'status'      => 'accepted',
+            'accepted_at' => $now,
+        ]);
+
+        Cache::forget('food_donation_record_stats');
+
+        return response()->json([
+            'message'     => 'Donation accepted. Now in transit.',
+            'accepted_at' => $now->toISOString(),
+        ]);
+    }
+
+    /**
+     * POST /staff/donations/journey/from-donor/{id}/received
+     * Staff confirms donation received — items go to food_inventory.
+     * Records received_at timestamp.
+     */
+    public function receivedDonorJourney($id)
+    {
+        $record = FoodDonationRecord::with('items', 'user')->findOrFail($id);
+
+        if ($record->status !== 'accepted') {
+            return response()->json(['message' => 'Donation is not in transit.'], 422);
+        }
+
+        $now = now();
+
+        // Add each donated item to the food_inventory table
+        foreach ($record->items as $item) {
+            FoodInventory::create([
+                'food_name'       => $item->food_name,
+                'category'        => $item->category,
+                'quantity'        => (int) round((float) $item->quantity), // cast decimal → integer for food_inventory
+                'unit'            => $item->unit,
+                'expiration_date' => $item->expiration_date,
+                'meal_type'       => 'Raw Ingredients',
+                'special_notes'   => $item->special_notes,
+            ]);
+        }
+
+        $record->update([
+            'status'      => 'received',
+            'received_at' => $now,
+        ]);
+
+        Cache::forget('food_donation_record_stats');
+        Cache::forget('food_inventory_list');
+        Cache::forget('staff_dashboard_stats');
+
+        return response()->json([
+            'message'     => 'Donation received. Items added to food inventory.',
+            'received_at' => $now->toISOString(),
+        ]);
+    }
+
+    /**
+     * POST /staff/donations/journey/from-donor/{id}/decline
+     * Permanently deletes the donation record from the database.
+     */
+    public function declineDonorJourney($id)
+    {
+        $record = FoodDonationRecord::with('items')->findOrFail($id);
+
+        if (!in_array($record->status, ['pending', 'accepted'])) {
+            return response()->json(['message' => 'Donation cannot be declined at this stage.'], 422);
+        }
+
+        // Hard delete — removes record and its items (cascade)
+        $record->items()->delete();
+        $record->delete();
+
+        return response()->json(['message' => 'Donation declined and removed.']);
+    }
+
+    /**
+     * POST /staff/donations/journey/from-donor/{id}/cancel-transit
+     * Cancels an in-transit donation — permanently deletes from database.
+     */
+    public function cancelDonorJourney($id)
+    {
+        $record = FoodDonationRecord::with('items')->findOrFail($id);
+
+        if ($record->status !== 'accepted') {
+            return response()->json(['message' => 'Donation is not in transit.'], 422);
+        }
+
+        // Hard delete — removes record and its items (cascade)
+        $record->items()->delete();
+        $record->delete();
+
+        return response()->json(['message' => 'Transit cancelled and record removed.']);
     }
 }

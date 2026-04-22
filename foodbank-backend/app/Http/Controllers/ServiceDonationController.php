@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use App\Models\ServiceDonation;
 use App\Models\ServiceDonationRecord;
 
@@ -204,11 +205,12 @@ class ServiceDonationController extends Controller
     // ══════════════════════════════════════════════════════════════════
     public function getRecordStats()
     {
-        return response()->json([
+        $stats = Cache::remember('service_donation_record_stats', 15, fn() => [
             'pending'  => ServiceDonationRecord::where('status', 'pending')->count(),
             'accepted' => ServiceDonationRecord::where('status', 'accepted')->count(),
             'declined' => ServiceDonationRecord::where('status', 'declined')->count(),
         ]);
+        return response()->json($stats);
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -224,7 +226,7 @@ class ServiceDonationController extends Controller
             return response()->json(['message' => 'Record is no longer pending.'], 422);
         }
 
-        // Copy all fields to the confirmed service_donations table
+        // Copy all fields to the confirmed service_donations (inventory) table
         ServiceDonation::create([
             'service_donation_record_id' => $record->id,
             'user_id'                    => $record->user_id,
@@ -255,12 +257,16 @@ class ServiceDonationController extends Controller
             'email'                => $record->email,
             'notes'                => $record->notes,
             'staff_notes'          => $request->notes ?? null,
+            'status'               => 'active',
         ]);
 
         $record->update([
             'status'      => 'accepted',
             'staff_notes' => $request->notes ?? null,
         ]);
+
+        Cache::forget('service_donation_record_stats');
+        Cache::forget('staff_dashboard_stats');
 
         return response()->json(['message' => 'Service donation accepted.']);
     }
@@ -282,6 +288,88 @@ class ServiceDonationController extends Controller
             'staff_notes' => $request->notes ?? null,
         ]);
 
+        Cache::forget('service_donation_record_stats');
+
         return response()->json(['message' => 'Service donation declined.']);
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // STAFF — Get service inventory (accepted donations)
+    // GET /api/staff/inventory/services
+    // ══════════════════════════════════════════════════════════════════
+    public function getServiceInventory(Request $request)
+    {
+        $query = ServiceDonation::orderByDesc('created_at');
+
+        // Filter by service type tab
+        if ($request->filter && $request->filter !== 'All') {
+            if ($request->filter === 'Active Service') {
+                $query->where('status', 'active');
+            } else {
+                $query->where('service_tab', $request->filter);
+            }
+        }
+
+        // Search
+        if ($request->search) {
+            $s = $request->search;
+            $query->where(function ($q) use ($s) {
+                $q->where('first_name',  'like', "%{$s}%")
+                  ->orWhere('last_name',   'like', "%{$s}%")
+                  ->orWhere('service_tab', 'like', "%{$s}%")
+                  ->orWhere('address',     'like', "%{$s}%")
+                  ->orWhere('frequency',   'like', "%{$s}%");
+            });
+        }
+
+        return response()->json($query->get()->map(fn($d) => [
+            'id'                   => $d->id,
+            'service_type'         => $d->service_tab,   // frontend expects service_type
+            'frequency'            => $d->frequency,
+            'date'                 => $d->day_of_week ?? $d->date,
+            'all_day'              => $d->all_day,
+            'starts_at'            => $d->starts_at,
+            'ends_at'              => $d->ends_at,
+            'address'              => $d->address,
+            'status'               => $d->status,
+
+            // Transportation
+            'quantity'             => $d->quantity,
+            'vehicle_type'         => $d->vehicle_type,
+            'capacity'             => $d->capacity,
+            'max_distance'         => $d->max_distance,
+            'transport_categories' => $d->transport_categories ?? [],
+
+            // Volunteer Work
+            'headcount'            => $d->headcount,
+            'preferred_work'       => $d->preferred_work,
+            'skill_categories'     => $d->skill_categories ?? [],
+
+            // Contact (no donor_name column — computed from first/last name)
+            'first_name'           => $d->first_name,
+            'last_name'            => $d->last_name,
+            'email'                => $d->email,
+            'notes'                => $d->notes,
+            'staff_notes'          => $d->staff_notes,
+        ]));
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // STAFF — Toggle service inventory status (active ↔ inactive)
+    // PATCH /api/staff/inventory/services/{id}/status
+    // ══════════════════════════════════════════════════════════════════
+    public function updateServiceInventoryStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:active,inactive',
+        ]);
+
+        $donation = ServiceDonation::findOrFail($id);
+        $donation->update(['status' => $request->status]);
+
+        return response()->json([
+            'message' => 'Status updated.',
+            'status'  => $donation->status,
+        ]);
     }
 }

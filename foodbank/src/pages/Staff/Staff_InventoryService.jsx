@@ -185,7 +185,6 @@ export default function Staff_InventoryService() {
     const contactName = `${s.first_name ?? ""} ${s.last_name ?? ""}`.toLowerCase();
     const matchesSearch =
       !q ||
-      s.donor_name?.toLowerCase().includes(q) ||
       s.service_type?.toLowerCase().includes(q) ||
       s.address?.toLowerCase().includes(q) ||
       s.frequency?.toLowerCase().includes(q) ||
@@ -199,7 +198,8 @@ export default function Staff_InventoryService() {
   const handleStatusClick = (s, e) => {
     e.stopPropagation();
     const newStatus = s.status === "active" ? "inactive" : "active";
-    setStatusConfirm({ id: s.id, currentStatus: s.status, newStatus, donorName: s.donor_name });
+    const contactName = `${s.first_name ?? ""} ${s.last_name ?? ""}`.trim() || s.service_type || "this service";
+    setStatusConfirm({ id: s.id, currentStatus: s.status, newStatus, donorName: contactName });
   };
 
   // ── Confirm toggle ──
@@ -446,7 +446,9 @@ export default function Staff_InventoryService() {
                 <span className="sis-type-badge sis-modal-type-badge">
                   {selectedService.service_type}
                 </span>
-                <h2 className="sis-modal-donor">{selectedService.donor_name}</h2>
+                <h2 className="sis-modal-donor">
+                  {`${selectedService.first_name ?? ""} ${selectedService.last_name ?? ""}`.trim() || "—"}
+                </h2>
               </div>
               <button className="sis-modal-close" onClick={() => setSelectedService(null)}>
                 <span className="material-symbols-rounded">close</span>

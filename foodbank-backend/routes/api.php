@@ -9,6 +9,8 @@ use App\Http\Controllers\FoodDonationController;
 use App\Http\Controllers\FinancialDonationController;
 use App\Http\Controllers\DonorController;
 use App\Http\Controllers\ServiceDonationController;
+use App\Http\Controllers\StaffController;
+use App\Http\Controllers\AdminController;
 
 // ── AUTH ROUTES ──────────────────────────────────────────────────────────────
 Route::post('/register',         [AuthController::class, 'register']);
@@ -63,6 +65,24 @@ Route::middleware('auth:sanctum')->group(function () {
     // ── Donor — Financial Donation: PayMongo (creates link → auto-approved by webhook) ──
     Route::post('/donor/donations/paymongo',      [FinancialDonationController::class, 'createPaymentLink']);
 
+    // ── Staff — Profile & Dashboard ──────────────────────────────────────────
+    Route::get('/staff/profile',          [StaffController::class, 'profile']);
+    Route::put('/staff/profile',          [StaffController::class, 'updateProfile']);
+    Route::post('/staff/change-password', [StaffController::class, 'changePassword']);
+    Route::get('/staff/dashboard/stats',  [StaffController::class, 'dashboardStats']);
+
+    // ── Admin — Profile & Dashboard ───────────────────────────────────────────
+    Route::get('/admin/profile',                          [AdminController::class, 'profile']);
+    Route::put('/admin/profile',                          [AdminController::class, 'updateProfile']);
+    Route::post('/admin/change-password',                 [AdminController::class, 'changePassword']);
+    Route::get('/admin/dashboard/stats',                  [AdminController::class, 'dashboardStats']);
+    Route::get('/admin/drives',                           [AdminController::class, 'getDrives']);
+    Route::get('/admin/charts/donation-trends',           [AdminController::class, 'chartDonationTrends']);
+    Route::get('/admin/charts/donation-types',            [AdminController::class, 'chartDonationTypes']);
+    Route::get('/admin/charts/beneficiary-types',         [AdminController::class, 'chartBeneficiaryTypes']);
+    Route::get('/admin/charts/distribution-by-region',   [AdminController::class, 'chartDistributionByRegion']);
+    Route::get('/admin/notifications',                    [AdminController::class, 'notifications']);
+
     // ── Staff — Food Donation Records ────────────────────────────────────────
     Route::get('/staff/food-donation-records',               [FoodDonationController::class,      'getRecords']);
     Route::get('/staff/food-donation-records/stats',         [FoodDonationController::class,      'getRecordStats']);
@@ -80,6 +100,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/staff/service-donations/stats',            [ServiceDonationController::class, 'getRecordStats']);
     Route::post('/staff/service-donations/{id}/accept',     [ServiceDonationController::class, 'acceptRecord']);
     Route::post('/staff/service-donations/{id}/decline',    [ServiceDonationController::class, 'declineRecord']);
+
+    // ── Staff — Service Inventory (accepted donations) ────────────────────────
+    Route::get('/staff/inventory/services',                        [ServiceDonationController::class, 'getServiceInventory']);
+    Route::patch('/staff/inventory/services/{id}/status',          [ServiceDonationController::class, 'updateServiceInventoryStatus']);
 
     // Legacy aliases (keep for backward compat)
     Route::get('/staff/service-donation-records',               [ServiceDonationController::class, 'getRecords']);
@@ -103,6 +127,7 @@ Route::post('/paymongo/webhook', [FinancialDonationController::class, 'handleWeb
 
 // ── ADMIN ONLY ───────────────────────────────────────────────────────────────
 Route::post('/admin/staff', [AuthController::class, 'createStaff']);
+Route::post('/admin/admin', [AuthController::class, 'createAdmin']);
 
 // ── PUBLIC — Beneficiary donation request ────────────────────────────────────
 Route::post('/donation-requests', [DonationController::class, 'submitRequest']);
@@ -127,3 +152,26 @@ Route::get('/staff/beneficiary-requests',                  [DonationController::
 Route::get('/staff/beneficiary-requests/stats',            [DonationController::class, 'getBeneficiaryRequestStats']);
 Route::post('/staff/beneficiary-requests/{id}/allocate',   [DonationController::class, 'allocateBeneficiaryRequest']);
 Route::post('/staff/beneficiary-requests/{id}/reject',     [DonationController::class, 'rejectBeneficiaryRequest']);
+
+// ── STAFF — Food Inventory (CRUD) ────────────────────────────────────────────
+Route::get('/staff/inventory/food',         [DonationController::class, 'getInventory']);
+Route::post('/staff/inventory/food',        [DonationController::class, 'storeInventory']);
+Route::put('/staff/inventory/food/{id}',    [DonationController::class, 'updateInventory']);
+Route::delete('/staff/inventory/food/{id}', [DonationController::class, 'destroyInventory']);
+
+// ── STAFF — Donation Journey Tracker: From Donor ──────────────────────────────
+Route::get('/staff/donations/journey/from-donor',                    [FoodDonationController::class, 'getDonorJourney']);
+Route::post('/staff/donations/journey/from-donor/{id}/accept',       [FoodDonationController::class, 'acceptDonorJourney']);
+Route::post('/staff/donations/journey/from-donor/{id}/received',     [FoodDonationController::class, 'receivedDonorJourney']);
+Route::post('/staff/donations/journey/from-donor/{id}/decline',      [FoodDonationController::class, 'declineDonorJourney']);
+Route::post('/staff/donations/journey/from-donor/{id}/cancel-transit',[FoodDonationController::class, 'cancelDonorJourney']);
+
+// ── STAFF — Donation Journey Tracker: To Beneficiary ─────────────────────────
+// Drive-level actions (use drive ID)
+Route::get('/staff/donations/journey/to-beneficiary',                      [DonationController::class, 'getBeneficiaryJourney']);
+Route::post('/staff/donations/journey/to-beneficiary/{id}/accept',         [DonationController::class, 'acceptDriveJourney']);
+Route::post('/staff/donations/journey/to-beneficiary/{id}/decline',        [DonationController::class, 'declineDriveJourney']);
+
+// Delivery-level actions (use delivery ID)
+Route::post('/staff/donations/journey/deliveries/{id}/received',           [DonationController::class, 'receivedDriveJourney']);
+Route::post('/staff/donations/journey/deliveries/{id}/cancel',             [DonationController::class, 'cancelDriveJourney']);

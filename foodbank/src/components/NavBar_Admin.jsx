@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 const navItems = [
@@ -29,6 +29,7 @@ const timeAgo = (dateStr) => {
 };
 
 export default function NavBar_Admin() {
+  const navigate = useNavigate();
   const [adminName,     setAdminName]     = useState("Admin Name");
   const [bellOpen,      setBellOpen]      = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -221,7 +222,13 @@ export default function NavBar_Admin() {
         {/* ADMIN NAME + LOGOUT */}
         <div className="user-navbar-user">
           <span className="material-symbols-rounded user-navbar-avatar">account_circle</span>
-          <span className="user-navbar-name">{adminName}</span>
+          <button
+            className="user-navbar-profile-btn"
+            onClick={() => navigate("/admin/profile")}
+            title="Edit Profile"
+          >
+            {adminName}
+          </button>
           <button className="user-navbar-logout" onClick={handleLogout} title="Logout">
             <span className="material-symbols-rounded">logout</span>
           </button>

@@ -20,6 +20,9 @@ class DonationDrive extends Model
         'contact',
         'email',
         'status',
+        'prepared_at',
+        'transit_at',
+        'received_at',
     ];
 
     public function request()
@@ -35,5 +38,15 @@ class DonationDrive extends Model
     public function staff()
     {
         return $this->belongsTo(User::class, 'staff_id');
+    }
+
+    public function items()
+    {
+        return $this->hasMany(DonationDriveItem::class);
+    }
+
+    public function deliveries()
+    {
+        return $this->hasMany(DonationDelivery::class);
     }
 }

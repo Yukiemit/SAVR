@@ -33,7 +33,6 @@ const DUMMY_ITEMS = [
     expiration_date: "2026-06-30",
     special_notes: "",
     photo: null,
-    donor_name: "Juan dela Cruz",
   },
   {
     id: 2,
@@ -45,7 +44,6 @@ const DUMMY_ITEMS = [
     expiration_date: "2026-06-30",
     special_notes: "Store in cool dry place.",
     photo: null,
-    donor_name: "ABC Logistics",
   },
   {
     id: 3,
@@ -57,7 +55,6 @@ const DUMMY_ITEMS = [
     expiration_date: "2026-06-30",
     special_notes: "Keep refrigerated.",
     photo: null,
-    donor_name: "Maria Santos",
   },
   {
     id: 4,
@@ -69,7 +66,6 @@ const DUMMY_ITEMS = [
     expiration_date: "2026-06-30",
     special_notes: "",
     photo: null,
-    donor_name: "Juan dela Cruz",
   },
   {
     id: 5,
@@ -81,7 +77,6 @@ const DUMMY_ITEMS = [
     expiration_date: "2026-03-01",
     special_notes: "Refrigerate immediately.",
     photo: null,
-    donor_name: "Cebu Helps NGO",
   },
   {
     id: 6,
@@ -93,7 +88,6 @@ const DUMMY_ITEMS = [
     expiration_date: "2026-06-30",
     special_notes: "",
     photo: null,
-    donor_name: "Maria Santos",
   },
   // Prepared Meals
   {
@@ -106,7 +100,6 @@ const DUMMY_ITEMS = [
     expiration_date: "2026-06-30",
     special_notes: "Reheat before serving.",
     photo: null,
-    donor_name: "Jollibee Foundation",
   },
   {
     id: 8,
@@ -118,7 +111,6 @@ const DUMMY_ITEMS = [
     expiration_date: "2026-06-30",
     special_notes: "",
     photo: null,
-    donor_name: "Maria Santos",
   },
   {
     id: 9,
@@ -130,7 +122,6 @@ const DUMMY_ITEMS = [
     expiration_date: "2026-06-30",
     special_notes: "",
     photo: null,
-    donor_name: "Starbucks PH",
   },
 ];
 
@@ -230,19 +221,28 @@ export default function Staff_InventoryFood() {
     if (foodTypeFilter !== "All" && it.category !== foodTypeFilter) return false;
     const q = search.toLowerCase();
     if (q && !it.food_name.toLowerCase().includes(q) &&
-             !it.category?.toLowerCase().includes(q) &&
-             !it.donor_name?.toLowerCase().includes(q)) return false;
+             !it.category?.toLowerCase().includes(q)) return false;
     return true;
   });
 
   const totalForTab = items.filter((it) => it.meal_type === mealTab).length;
 
+  // ── Refresh items from API ──
+  const refreshItems = async () => {
+    try {
+      const res = await api.get("/staff/inventory/food");
+      setItems(res.data);
+    } catch { /* keep existing */ }
+  };
+
   // ── Edit save ──
   const handleEditSave = async (updated) => {
     try {
-      await api.put(`/staff/inventory/food/${updated.id}`, updated);
-    } catch { /* local fallback */ }
-    setItems((prev) => prev.map((it) => (it.id === updated.id ? updated : it)));
+      const res = await api.put(`/staff/inventory/food/${updated.id}`, updated);
+      setItems((prev) => prev.map((it) => (it.id === updated.id ? res.data : it)));
+    } catch {
+      setItems((prev) => prev.map((it) => (it.id === updated.id ? updated : it)));
+    }
     setEditTarget(null);
     showToast(`"${updated.food_name}" has been updated.`);
   };
@@ -253,28 +253,27 @@ export default function Staff_InventoryFood() {
     setDeleteLoading(true);
     try {
       await api.delete(`/staff/inventory/food/${deleteTarget.id}`);
-    } catch { /* local fallback */ }
-    setItems((prev) => prev.filter((it) => it.id !== deleteTarget.id));
-    showToast(`"${deleteTarget.food_name}" has been removed.`, "success");
-    setDeleteTarget(null);
-    setDeleteLoading(false);
+      setItems((prev) => prev.filter((it) => it.id !== deleteTarget.id));
+      showToast(`"${deleteTarget.food_name}" has been removed.`, "success");
+    } catch {
+      showToast("Failed to delete item.", "error");
+    } finally {
+      setDeleteTarget(null);
+      setDeleteLoading(false);
+    }
   };
 
   // ── Add new item ──
   const handleAddSave = async (newItem) => {
-    const item = {
-      ...newItem,
-      id: Date.now(),
-      meal_type: mealTab,
-    };
+    const payload = { ...newItem, meal_type: mealTab };
     try {
-      const res = await api.post("/staff/inventory/food", item);
+      const res = await api.post("/staff/inventory/food", payload);
       setItems((prev) => [...prev, res.data]);
+      showToast(`"${res.data.food_name}" has been added.`);
     } catch {
-      setItems((prev) => [...prev, item]);
+      showToast("Failed to add item.", "error");
     }
     setShowAddModal(false);
-    showToast(`"${item.food_name}" has been added.`);
   };
 
   const now = new Date();
@@ -549,7 +548,7 @@ export default function Staff_InventoryFood() {
             <EditForm
               item={{
                 food_name: "", category: "", unit: "", quantity: "",
-                expiration_date: "", special_notes: "", donor_name: "",
+                expiration_date: "", special_notes: "",
               }}
               onChange={() => {}}
               onSave={handleAddSave}
@@ -775,16 +774,6 @@ function EditForm({ item, onChange, onSave, onCancel, isNew = false }) {
           {errors.expiration_date && <span className="sif-edit-err">{errors.expiration_date}</span>}
         </div>
 
-        <div className="sif-edit-field sif-edit-field-grow">
-          <label className="sif-edit-label">Donor Name <span className="sif-edit-opt">(optional)</span></label>
-          <input
-            className="sif-edit-input"
-            type="text"
-            placeholder="Donor / source"
-            value={form.donor_name || ""}
-            onChange={(e) => update("donor_name", e.target.value)}
-          />
-        </div>
       </div>
 
       <div className="sif-edit-row">

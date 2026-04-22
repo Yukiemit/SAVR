@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ServiceDonation extends Model
 {
+    protected $table = 'service_donations_inventory';
+
     protected $fillable = [
         'service_donation_record_id',
         'user_id',
@@ -36,6 +38,7 @@ class ServiceDonation extends Model
         'email',
         'notes',
         'staff_notes',
+        'status',
     ];
 
     protected $casts = [

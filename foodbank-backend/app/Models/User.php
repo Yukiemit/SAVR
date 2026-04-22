@@ -31,6 +31,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'department',
         'pending_data',
         'otp_code',
         'otp_expires_at',

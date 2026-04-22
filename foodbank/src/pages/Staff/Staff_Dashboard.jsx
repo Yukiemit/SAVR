@@ -7,7 +7,7 @@ const STAT_CARDS = [
     key: "total_donations",
     label: "TOTAL DONATIONS MADE",
     icon: "/images/Glass_Donor.png",
-    prefix: "₱",
+    prefix: "",
     format: (v) => Number(v).toLocaleString(),
   },
   {
@@ -40,9 +40,9 @@ export default function Staff_Dashboard() {
     total_amount_donated: 0,
     approved_requests:    0,
   });
-  const [staffName, setStaffName] = useState("First Name, Last Name");
-  const [staffDept, setStaffDept] = useState("Department");
-  const [staffRole, setStaffRole] = useState("Role");
+  const [staffName, setStaffName] = useState("");
+  const [staffDept, setStaffDept] = useState("");
+  const [staffRole, setStaffRole] = useState("");
   const [loading,   setLoading]   = useState(true);
 
   useEffect(() => {
@@ -53,9 +53,11 @@ export default function Staff_Dashboard() {
           api.get("/staff/profile"),
         ]);
         setStats(statsRes.data);
-        setStaffName(profileRes.data.name       ?? "First Name, Last Name");
-        setStaffDept(profileRes.data.department ?? "Department");
-        setStaffRole(profileRes.data.role       ?? "Role");
+        const p = profileRes.data;
+        const fullName = [p.first_name, p.last_name].filter(Boolean).join(" ") || p.name || "Staff";
+        setStaffName(fullName);
+        setStaffDept(p.department ?? "—");
+        setStaffRole(p.role       ?? "Staff");
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
@@ -82,8 +84,12 @@ export default function Staff_Dashboard() {
           <div className="sd-banner-overlay" />
           <div className="sd-banner-content">
             <p className="sd-banner-greeting">Good day!</p>
-            <h1 className="sd-banner-name">{staffName}</h1>
-            <p className="sd-banner-meta">{staffDept} | {staffRole}</p>
+            <h1 className="sd-banner-name">
+              {loading ? "\u00A0" : (staffName || "Staff")}
+            </h1>
+            <p className="sd-banner-meta">
+              {loading ? "\u00A0" : `${staffDept || "—"} | ${staffRole || "Staff"}`}
+            </p>
             <p className="sd-banner-sub">
               Here&apos;s your staff dashboard – keep up the good work!
             </p>
