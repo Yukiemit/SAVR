@@ -22,6 +22,7 @@ import StaffDonationJourneyTracker from "./pages/Staff/Staff_DonationJourneyTrac
 import StaffInventoryService from "./pages/Staff/Staff_InventoryService";
 import StaffInventoryFood from "./pages/Staff/Staff_InventoryFood";
 import StaffProfile from "./pages/Staff/Staff_Profile";
+import StaffTruckOptimization from "./pages/Staff/Staff_TruckOptimization";
 
 import DonorDashboard from "./pages/Donor/Donor_Dashboard";
 import DonorProfileIndividual from "./pages/Donor/Donor_ProfileIndividual";
@@ -115,6 +116,11 @@ function App() {
           <Route path="/staff/profile" element={
             <ProtectedRoute allowedRoles={["staff"]}>
               <StaffProfile />
+            </ProtectedRoute>
+          } />
+          <Route path="/staff/operations/truck-optimization" element={
+            <ProtectedRoute allowedRoles={["staff"]}>
+              <StaffTruckOptimization />
             </ProtectedRoute>
           } />
 
