@@ -11,6 +11,7 @@ use App\Models\BeneficiaryRequest;
 use App\Models\FoodInventory;
 use App\Models\DonationDelivery;
 use App\Models\TruckStop;
+use App\Services\GeocodingService;
 
 class DonationController extends Controller
 {
@@ -237,25 +238,44 @@ class DonationController extends Controller
 
         // ── CREATE TRUCK STOP when drive becomes "OnGoing" ──
         if ($newStatus === 'OnGoing' && $oldStatus !== 'OnGoing') {
-            // Check if a truck stop already exists for this drive
-            $existingStop = TruckStop::where('source', 'donation_drive')
-                ->where('reference_id', $drive->id)
-                ->first();
+            try {
+                $existingStop = TruckStop::where('source', 'donation_drive')
+                    ->where('reference_id', $drive->id)
+                    ->first();
 
-            if (!$existingStop) {
-                TruckStop::create([
-                    'truck_id'        => null,  // unassigned
-                    'stop_type'       => 'DELIVER',
-                    'name'            => $drive->drive_title,
-                    'address'         => $drive->address,
-                    'date'            => $drive->start_date,
-                    'time_slot_start' => '09:00',
-                    'time_slot_end'   => '17:00',
-                    'food_items'      => '',
-                    'source'          => 'donation_drive',
-                    'reference_id'    => $drive->id,
-                    'status'          => 'pending',
-                ]);
+                if (!$existingStop) {
+                    $geo    = new GeocodingService();
+                    $coords = $drive->address ? $geo->geocode($drive->address) : null;
+
+                    TruckStop::create([
+                        'truck_id'        => null,
+                        'stop_type'       => 'DELIVER',
+                        'name'            => $drive->drive_title,
+                        'address'         => $drive->address,
+                        'latitude'        => $coords['lat'] ?? null,
+                        'longitude'       => $coords['lng'] ?? null,
+                        'date'            => $drive->start_date,
+                        'time_slot_start' => '09:00',
+                        'time_slot_end'   => '17:00',
+                        'food_items'      => '',
+                        'source'          => 'donation_drive',
+                        'reference_id'    => $drive->id,
+                        'status'          => 'pending',
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Could not create truck stop for drive #' . $drive->id . ': ' . $e->getMessage());
+            }
+        }
+
+        // ── MARK TRUCK STOP as completed when drive becomes "Done" ──
+        if ($newStatus === 'Done' && $oldStatus !== 'Done') {
+            try {
+                TruckStop::where('source', 'donation_drive')
+                    ->where('reference_id', $drive->id)
+                    ->update(['status' => 'completed']);
+            } catch (\Exception $e) {
+                \Log::warning('Could not complete truck stop for drive #' . $drive->id . ': ' . $e->getMessage());
             }
         }
 

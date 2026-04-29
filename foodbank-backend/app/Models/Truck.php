@@ -11,6 +11,8 @@ class Truck extends Model
         'vehicle_type',
         'capacity',
         'current_address',
+        'latitude',
+        'longitude',
         'categories',
         'source',
         'service_donation_id',
@@ -19,6 +21,8 @@ class Truck extends Model
 
     protected $casts = [
         'categories' => 'array',
+        'latitude'   => 'float',
+        'longitude'  => 'float',
     ];
 
     public function stops()

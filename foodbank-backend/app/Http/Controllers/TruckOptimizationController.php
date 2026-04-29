@@ -7,62 +7,129 @@ use App\Models\Truck;
 use App\Models\TruckStop;
 use App\Models\FoodDonationRecord;
 use App\Models\DonationDrive;
+use App\Services\GeocodingService;
 
 class TruckOptimizationController extends Controller
 {
-    /**
-     * GET /staff/truck-optimization/pending-stops
-     * Returns unassigned stops from truck_stops table
-     */
+    private GeocodingService $geo;
+
+    public function __construct(GeocodingService $geo)
+    {
+        $this->geo = $geo;
+    }
+
+    // ── GET /staff/truck-optimization/pending-stops ──────────────────────────
     public function getPendingStops()
     {
-        // Get all unassigned truck stops
-        $unassignedStops = TruckStop::whereNull('truck_id')->get();
-
-        $stops = [];
-
-        foreach ($unassignedStops as $stop) {
-            $stops[] = [
-                'id'              => $stop->id,
-                'type'            => $stop->stop_type === 'PICKUP' ? 'pickup' : 'deliver',
-                'name'            => $stop->name,
-                'address'         => $stop->address,
-                'pref_date'       => $stop->date ? $stop->date->format('Y-m-d') : null,
-                'time_slot_start' => $stop->time_slot_start,
-                'time_slot_end'   => $stop->time_slot_end,
-                'food_items'      => $stop->food_items ?? '',
-                'source'          => $stop->source,
-                'donation_id'     => $stop->source === 'food_donation' ? $stop->reference_id : null,
-                'drive_id'        => $stop->source === 'donation_drive' ? $stop->reference_id : null,
-            ];
+        // Auto-backfill any accepted donations / OnGoing drives that have no stop yet
+        try {
+            $this->backfillMissingStops();
+        } catch (\Exception $e) {
+            \Log::warning('Truck stop backfill failed: ' . $e->getMessage());
         }
+
+        $stops = TruckStop::whereNull('truck_id')
+            ->where('status', '!=', 'completed')
+            ->orderByRaw("date ASC NULLS LAST")
+            ->get()
+            ->map(fn($s) => $this->formatPendingStop($s));
 
         return response()->json($stops);
     }
 
-    /**
-     * GET /staff/truck-optimization/trucks
-     * Returns all active trucks with their schedules
-     */
+    // ── Backfill: create truck stops for already-accepted donations / drives ──
+    private function backfillMissingStops(): void
+    {
+        // 1. Food donations that are accepted but not yet received and have no stop
+        $accepted = FoodDonationRecord::with(['items', 'user'])
+            ->where('status', 'accepted')
+            ->get();
+
+        foreach ($accepted as $record) {
+            try {
+                $exists = TruckStop::where('source', 'food_donation')
+                    ->where('reference_id', $record->id)
+                    ->exists();
+
+                if (!$exists) {
+                    $stopAddress = $record->mode === 'pickup'
+                        ? $record->pickup_address
+                        : $record->delivery_address;
+
+                    // Skip geocoding here — coordinates are filled lazily during autoAssign
+                    TruckStop::create([
+                        'truck_id'        => null,
+                        'stop_type'       => 'PICKUP',
+                        'name'            => $record->user?->name ?? 'Unknown Donor',
+                        'address'         => $stopAddress ?? 'Unknown Address',
+                        'latitude'        => null,
+                        'longitude'       => null,
+                        'date'            => $record->preferred_date,
+                        'time_slot_start' => $record->time_slot_start ?? '09:00',
+                        'time_slot_end'   => $record->time_slot_end   ?? '17:00',
+                        'food_items'      => $record->items->map(fn($i) => "{$i->food_name} | {$i->quantity} {$i->unit} | {$i->category}")->join(' · '),
+                        'food_name'       => $record->items->first()?->food_name ?? '',
+                        'food_type'       => $record->items->first()?->category   ?? '',
+                        'qty'             => (string)($record->items->first()?->quantity ?? 0),
+                        'unit'            => $record->items->first()?->unit ?? '',
+                        'source'          => 'food_donation',
+                        'reference_id'    => $record->id,
+                        'status'          => 'pending',
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Log::warning("Backfill failed for food_donation #{$record->id}: " . $e->getMessage());
+            }
+        }
+
+        // 2. Donation drives that are OnGoing but have no truck stop yet
+        $ongoing = DonationDrive::where('status', 'OnGoing')->get();
+
+        foreach ($ongoing as $drive) {
+            try {
+                $exists = TruckStop::where('source', 'donation_drive')
+                    ->where('reference_id', $drive->id)
+                    ->exists();
+
+                if (!$exists) {
+                    // Skip geocoding here — coordinates filled lazily during autoAssign
+                    TruckStop::create([
+                        'truck_id'        => null,
+                        'stop_type'       => 'DELIVER',
+                        'name'            => $drive->drive_title ?? 'Unnamed Drive',
+                        'address'         => $drive->address ?? 'Unknown Address',
+                        'latitude'        => null,
+                        'longitude'       => null,
+                        'date'            => $drive->start_date,
+                        'time_slot_start' => '09:00',
+                        'time_slot_end'   => '17:00',
+                        'food_items'      => '',
+                        'source'          => 'donation_drive',
+                        'reference_id'    => $drive->id,
+                        'status'          => 'pending',
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Log::warning("Backfill failed for donation_drive #{$drive->id}: " . $e->getMessage());
+            }
+        }
+    }
+
+    // ── GET /staff/truck-optimization/trucks ─────────────────────────────────
     public function getTrucks()
     {
         $trucks = Truck::where('status', 'active')
-            ->with(['stops' => function ($query) {
-                $query->orderBy('stop_order')->orderBy('date');
-            }])
+            ->with(['stops' => fn($q) => $q->where('status', '!=', 'completed')->orderBy('stop_order')->orderBy('date')])
             ->get()
-            ->map(fn($truck) => $this->formatTruck($truck));
+            ->map(fn($t) => $this->formatTruck($t));
 
         return response()->json($trucks);
     }
 
-    /**
-     * GET /staff/truck-optimization/occupancy
-     * Returns map of truck_id → array of dates with stops
-     */
+    // ── GET /staff/truck-optimization/occupancy ──────────────────────────────
     public function getOccupancy()
     {
-        $trucks = Truck::where('status', 'active')->get();
+        $trucks    = Truck::where('status', 'active')->get();
         $occupancy = [];
 
         foreach ($trucks as $truck) {
@@ -82,131 +149,146 @@ class TruckOptimizationController extends Controller
         return response()->json($occupancy);
     }
 
-    /**
-     * POST /staff/truck-optimization/assign-stop
-     * Assigns a pending stop to a truck
-     */
+    // ── POST /staff/truck-optimization/assign-stop ───────────────────────────
     public function assignStop(Request $request)
     {
         $request->validate([
-            'stop_id' => 'required|integer',
+            'stop_id'  => 'required|integer',
             'truck_id' => 'required|integer',
         ]);
 
-        $stop = TruckStop::findOrFail($request->stop_id);
+        $stop  = TruckStop::findOrFail($request->stop_id);
         $truck = Truck::findOrFail($request->truck_id);
 
-        // Get the next stop_order for this truck
+        // Validate operating window 07:00 – 21:00
+        if ($stop->time_slot_start && $stop->time_slot_end) {
+            $start = substr($stop->time_slot_start, 0, 5);
+            $end   = substr($stop->time_slot_end,   0, 5);
+            if ($start < '07:00' || $end > '21:00') {
+                return response()->json(['message' => 'Stops can only be scheduled between 7:00 AM and 9:00 PM.'], 422);
+            }
+        }
+
         $nextOrder = TruckStop::where('truck_id', $truck->id)->max('stop_order') ?? 0;
-        $nextOrder++;
+        $stop->update(['truck_id' => $truck->id, 'stop_order' => $nextOrder + 1]);
 
-        // Assign the stop to the truck
-        $stop->update([
-            'truck_id'   => $truck->id,
-            'stop_order' => $nextOrder,
-        ]);
-
-        // Return all trucks with updated schedules
         $trucks = Truck::where('status', 'active')
-            ->with(['stops' => function ($query) {
-                $query->orderBy('stop_order')->orderBy('date');
-            }])
+            ->with(['stops' => fn($q) => $q->orderBy('stop_order')->orderBy('date')])
             ->get()
             ->map(fn($t) => $this->formatTruck($t));
 
         return response()->json(['trucks' => $trucks]);
     }
 
-    /**
-     * POST /staff/truck-optimization/auto-assign
-     * Greedily assigns all unassigned stops to available trucks
-     */
+    // ── POST /staff/truck-optimization/auto-assign ───────────────────────────
+    // Nearest-truck logic: assign each pending stop to the closest active truck.
+    // "Current position" of a truck = its last stop's coords, or its base coords.
+    // TR (manual) trucks are preferred over SD (service_donation) trucks.
     public function autoAssign()
     {
-        // Get all unassigned stops
-        $unassignedStops = TruckStop::whereNull('truck_id')->get();
+        $unassigned = TruckStop::whereNull('truck_id')
+            ->orderByRaw("date ASC NULLS LAST")
+            ->get();
 
-        $assignedCount = 0;
-        $remaining = [];
+        // Load all active trucks with their stops (need last stop coords)
+        $trucks = Truck::where('status', 'active')
+            ->with(['stops' => fn($q) => $q->orderBy('stop_order')->orderBy('date')])
+            ->get();
 
-        foreach ($unassignedStops as $stop) {
-            // Find first available truck (simple greedy: just pick the first active truck)
-            $truck = Truck::where('status', 'active')->first();
+        if ($trucks->isEmpty()) {
+            return response()->json([
+                'trucks'            => [],
+                'remaining_pending' => $unassigned->map(fn($s) => $this->formatPendingStop($s)),
+            ]);
+        }
 
-            if ($truck) {
-                $nextOrder = TruckStop::where('truck_id', $truck->id)->max('stop_order') ?? 0;
-                $nextOrder++;
+        foreach ($unassigned as $stop) {
+            // Respect 07:00–21:00 window
+            if ($stop->time_slot_start && $stop->time_slot_end) {
+                $s = substr($stop->time_slot_start, 0, 5);
+                $e = substr($stop->time_slot_end,   0, 5);
+                if ($s < '07:00' || $e > '21:00') continue;
+            }
 
-                $stop->update([
-                    'truck_id'   => $truck->id,
-                    'stop_order' => $nextOrder,
-                ]);
-                $assignedCount++;
-            } else {
-                $remaining[] = $stop;
+            // Geocode the stop if not yet done
+            if (!$stop->latitude && $stop->address) {
+                $coords = $this->geo->geocode($stop->address);
+                if ($coords) {
+                    $stop->update(['latitude' => $coords['lat'], 'longitude' => $coords['lng']]);
+                    $stop->refresh();
+                }
+            }
+
+            $bestTruck    = null;
+            $bestDistance = PHP_FLOAT_MAX;
+
+            foreach ($trucks as $truck) {
+                // Get truck's effective current position (last stop or base)
+                $lastStop = $truck->stops->last();
+                $tLat = $lastStop?->latitude  ?? $truck->latitude;
+                $tLng = $lastStop?->longitude ?? $truck->longitude;
+
+                // Calculate distance if both have coordinates
+                if ($stop->latitude && $stop->longitude && $tLat && $tLng) {
+                    $dist = $this->geo->haversineDistance(
+                        $tLat, $tLng,
+                        $stop->latitude, $stop->longitude
+                    );
+                } else {
+                    // No coords — use stop count as proxy, TR trucks get 0 bonus
+                    $dist = $truck->stops->count() * 10;
+                }
+
+                // TR (manual) trucks get a 50 km advantage over SD trucks
+                if ($truck->source === 'service_donation') {
+                    $dist += 50;
+                }
+
+                if ($dist < $bestDistance) {
+                    $bestDistance = $dist;
+                    $bestTruck    = $truck;
+                }
+            }
+
+            if ($bestTruck) {
+                $nextOrder = TruckStop::where('truck_id', $bestTruck->id)->max('stop_order') ?? 0;
+                $stop->update(['truck_id' => $bestTruck->id, 'stop_order' => $nextOrder + 1]);
+
+                // Refresh the truck's stops so next iteration sees updated position
+                $bestTruck->load(['stops' => fn($q) => $q->orderBy('stop_order')->orderBy('date')]);
             }
         }
 
-        // Return updated trucks and remaining unassigned stops
         $trucks = Truck::where('status', 'active')
-            ->with(['stops' => function ($query) {
-                $query->orderBy('stop_order')->orderBy('date');
-            }])
+            ->with(['stops' => fn($q) => $q->orderBy('stop_order')->orderBy('date')])
             ->get()
             ->map(fn($t) => $this->formatTruck($t));
 
-        $remainingPending = TruckStop::whereNull('truck_id')
+        $remaining = TruckStop::whereNull('truck_id')
+            ->orderByRaw("date ASC NULLS LAST")
             ->get()
-            ->map(fn($stop) => [
-                'id'              => $stop->id,
-                'type'            => $stop->stop_type === 'PICKUP' ? 'pickup' : 'deliver',
-                'name'            => $stop->name,
-                'address'         => $stop->address,
-                'pref_date'       => $stop->date,
-                'time_slot_start' => $stop->time_slot_start,
-                'time_slot_end'   => $stop->time_slot_end,
-                'food_items'      => $stop->food_items ?? '',
-                'source'          => $stop->source,
-            ]);
+            ->map(fn($s) => $this->formatPendingStop($s));
 
-        return response()->json([
-            'trucks'            => $trucks,
-            'remaining_pending' => $remainingPending,
-        ]);
+        return response()->json(['trucks' => $trucks, 'remaining_pending' => $remaining]);
     }
 
-    /**
-     * PUT /staff/truck-optimization/trucks/{id}/schedule
-     * Updates the schedule (stop order) for a truck
-     */
+    // ── PUT /staff/truck-optimization/trucks/{id}/schedule ──────────────────
     public function updateSchedule(Request $request, $id)
     {
         $truck = Truck::findOrFail($id);
+        $request->validate(['schedule' => 'required|array', 'schedule.*.id' => 'required|integer']);
 
-        $request->validate([
-            'schedule' => 'required|array',
-            'schedule.*.id' => 'required|integer',
-        ]);
-
-        // Update stop_order for each stop
         foreach ($request->schedule as $index => $stopData) {
             TruckStop::where('id', $stopData['id'])
                 ->where('truck_id', $truck->id)
                 ->update(['stop_order' => $index]);
         }
 
-        // Return the updated truck
-        $truck->load(['stops' => function ($query) {
-            $query->orderBy('stop_order')->orderBy('date');
-        }]);
-
+        $truck->load(['stops' => fn($q) => $q->orderBy('stop_order')->orderBy('date')]);
         return response()->json(['truck' => $this->formatTruck($truck)]);
     }
 
-    /**
-     * POST /staff/truck-optimization/trucks
-     * Creates a new truck
-     */
+    // ── POST /staff/truck-optimization/trucks ────────────────────────────────
     public function storeTruck(Request $request)
     {
         $request->validate([
@@ -217,6 +299,13 @@ class TruckOptimizationController extends Controller
             'categories'      => 'nullable|array',
         ]);
 
+        // Geocode the truck's base address
+        $lat = null; $lng = null;
+        if ($request->current_address) {
+            $coords = $this->geo->geocode($request->current_address);
+            if ($coords) { $lat = $coords['lat']; $lng = $coords['lng']; }
+        }
+
         $truck = Truck::create([
             'unit_number'     => $request->unit_number,
             'vehicle_type'    => $request->vehicle_type,
@@ -224,32 +313,44 @@ class TruckOptimizationController extends Controller
             'current_address' => $request->current_address,
             'categories'      => $request->categories ?? [],
             'source'          => 'manual',
+            'latitude'        => $lat,
+            'longitude'       => $lng,
         ]);
 
-        return response()->json($this->formatTruck($truck), 201);
+        return response()->json($this->formatTruck($truck->load('stops')), 201);
     }
 
-    /**
-     * DELETE /staff/truck-optimization/trucks/{id}
-     * Deletes a truck and unassigns its stops
-     */
+    // ── DELETE /staff/truck-optimization/trucks/{id} ─────────────────────────
     public function destroyTruck($id)
     {
         $truck = Truck::findOrFail($id);
-
-        // Unassign all stops
         TruckStop::where('truck_id', $truck->id)->update(['truck_id' => null]);
-
-        // Delete the truck
         $truck->delete();
-
         return response()->json(['message' => 'Truck deleted and stops unassigned.']);
     }
 
-    /**
-     * Format a truck with its schedule for the frontend
-     */
-    private function formatTruck($truck)
+    // ── PRIVATE HELPERS ──────────────────────────────────────────────────────
+
+    private function formatPendingStop($stop): array
+    {
+        return [
+            'id'              => $stop->id,
+            'type'            => $stop->stop_type === 'PICKUP' ? 'pickup' : 'deliver',
+            'name'            => $stop->name,
+            'address'         => $stop->address,
+            'lat'             => $stop->latitude  ? (float) $stop->latitude  : null,
+            'lng'             => $stop->longitude ? (float) $stop->longitude : null,
+            'pref_date'       => $stop->date ? $stop->date->format('Y-m-d') : null,
+            'time_slot_start' => $stop->time_slot_start,
+            'time_slot_end'   => $stop->time_slot_end,
+            'food_items'      => $stop->food_items ?? '',
+            'source'          => $stop->source,
+            'donation_id'     => $stop->source === 'food_donation'  ? $stop->reference_id : null,
+            'drive_id'        => $stop->source === 'donation_drive' ? $stop->reference_id : null,
+        ];
+    }
+
+    private function formatTruck($truck): array
     {
         return [
             'id'              => $truck->id,
@@ -257,6 +358,8 @@ class TruckOptimizationController extends Controller
             'vehicle_type'    => $truck->vehicle_type,
             'capacity'        => $truck->capacity,
             'current_address' => $truck->current_address,
+            'lat'             => $truck->latitude  ? (float) $truck->latitude  : null,
+            'lng'             => $truck->longitude ? (float) $truck->longitude : null,
             'categories'      => $truck->categories ?? [],
             'source'          => $truck->source,
             'schedule'        => $truck->stops->map(fn($stop) => [
@@ -264,6 +367,8 @@ class TruckOptimizationController extends Controller
                 'stop_type'       => $stop->stop_type,
                 'name'            => $stop->name,
                 'address'         => $stop->address,
+                'lat'             => $stop->latitude  ? (float) $stop->latitude  : null,
+                'lng'             => $stop->longitude ? (float) $stop->longitude : null,
                 'date'            => $stop->date ? $stop->date->format('Y-m-d') : null,
                 'time_slot_start' => $stop->time_slot_start,
                 'time_slot_end'   => $stop->time_slot_end,

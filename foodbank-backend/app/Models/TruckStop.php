@@ -11,6 +11,8 @@ class TruckStop extends Model
         'stop_type',
         'name',
         'address',
+        'latitude',
+        'longitude',
         'date',
         'time_slot_start',
         'time_slot_end',
@@ -23,6 +25,12 @@ class TruckStop extends Model
         'reference_id',
         'stop_order',
         'status',
+    ];
+
+    protected $casts = [
+        'date'      => 'date',
+        'latitude'  => 'float',
+        'longitude' => 'float',
     ];
 
     public function truck()

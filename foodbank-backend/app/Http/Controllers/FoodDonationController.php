@@ -10,6 +10,7 @@ use App\Models\FoodDonationRecord;
 use App\Models\FoodDonationRecordItem;
 use App\Models\FoodInventory;
 use App\Models\TruckStop;
+use App\Services\GeocodingService;
 
 class FoodDonationController extends Controller
 {
@@ -330,28 +331,38 @@ class FoodDonationController extends Controller
         ]);
 
         // Auto-create a PICKUP truck stop if one doesn't exist
-        $existingStop = TruckStop::where('source', 'food_donation')
-            ->where('reference_id', $record->id)
-            ->first();
+        try {
+            $existingStop = TruckStop::where('source', 'food_donation')
+                ->where('reference_id', $record->id)
+                ->first();
 
-        if (!$existingStop) {
-            TruckStop::create([
-                'truck_id'        => null,  // unassigned
-                'stop_type'       => 'PICKUP',
-                'name'            => $record->user?->name ?? 'Unknown Donor',
-                'address'         => $record->mode === 'pickup' ? $record->pickup_address : $record->delivery_address,
-                'date'            => $record->preferred_date,
-                'time_slot_start' => $record->time_slot_start,
-                'time_slot_end'   => $record->time_slot_end,
-                'food_items'      => $record->items->map(fn($i) => "{$i->food_name} | {$i->quantity} {$i->unit} | {$i->category}")->join(' · '),
-                'food_name'       => $record->items->first()?->food_name,
-                'food_type'       => $record->items->first()?->category,
-                'qty'             => (string)($record->items->first()?->quantity),
-                'unit'            => $record->items->first()?->unit,
-                'source'          => 'food_donation',
-                'reference_id'    => $record->id,
-                'status'          => 'pending',
-            ]);
+            if (!$existingStop) {
+                $stopAddress = $record->mode === 'pickup' ? $record->pickup_address : $record->delivery_address;
+                $geo    = new GeocodingService();
+                $coords = $stopAddress ? $geo->geocode($stopAddress) : null;
+
+                TruckStop::create([
+                    'truck_id'        => null,
+                    'stop_type'       => 'PICKUP',
+                    'name'            => $record->user?->name ?? 'Unknown Donor',
+                    'address'         => $stopAddress,
+                    'latitude'        => $coords['lat'] ?? null,
+                    'longitude'       => $coords['lng'] ?? null,
+                    'date'            => $record->preferred_date,
+                    'time_slot_start' => $record->time_slot_start,
+                    'time_slot_end'   => $record->time_slot_end,
+                    'food_items'      => $record->items->map(fn($i) => "{$i->food_name} | {$i->quantity} {$i->unit} | {$i->category}")->join(' · '),
+                    'food_name'       => $record->items->first()?->food_name,
+                    'food_type'       => $record->items->first()?->category,
+                    'qty'             => (string)($record->items->first()?->quantity),
+                    'unit'            => $record->items->first()?->unit,
+                    'source'          => 'food_donation',
+                    'reference_id'    => $record->id,
+                    'status'          => 'pending',
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Could not create truck stop for food donation #' . $record->id . ': ' . $e->getMessage());
         }
 
         Cache::forget('food_donation_record_stats');
@@ -394,6 +405,15 @@ class FoodDonationController extends Controller
             'status'      => 'received',
             'received_at' => $now,
         ]);
+
+        // Mark the truck stop as completed (pick up is done)
+        try {
+            TruckStop::where('source', 'food_donation')
+                ->where('reference_id', $record->id)
+                ->update(['status' => 'completed']);
+        } catch (\Exception $e) {
+            \Log::warning('Could not complete truck stop for food donation #' . $record->id . ': ' . $e->getMessage());
+        }
 
         Cache::forget('food_donation_record_stats');
         Cache::forget('food_inventory_list');

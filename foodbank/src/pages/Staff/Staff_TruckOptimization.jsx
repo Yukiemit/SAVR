@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import NavBar_Staff from "../../components/NavBar_Staff";
 import api from "../../services/api";
 
@@ -82,12 +82,16 @@ function getMinDate() {
   return today.toISOString().split('T')[0];
 }
 
-// ── Get current time rounded up to next 30 minutes ──────────────────────────
+// ── Operating window constants ───────────────────────────────────────────────
+const OPERATING_START = "07:00"; // 7:00 AM
+const OPERATING_END   = "21:00"; // 9:00 PM
+
+// ── Get current time rounded up to next 30 minutes, clamped to operating window
 function getCurrentTimeRounded() {
   const now = new Date();
-  let hours = now.getHours();
+  let hours   = now.getHours();
   let minutes = now.getMinutes();
-  
+
   // Round up to next 30-minute interval
   if (minutes > 0 && minutes <= 30) {
     minutes = 30;
@@ -95,20 +99,20 @@ function getCurrentTimeRounded() {
     minutes = 0;
     hours += 1;
   }
-  
-  // If minutes is 0, keep as is (for top of the hour)
-  if (minutes === 0 && now.getMinutes() > 0) {
-    // Already handled above
-  }
-  
+
+  // Clamp to operating window
+  if (hours < 7)  { hours = 7;  minutes = 0; }
+  if (hours >= 21){ hours = 21; minutes = 0; }
+
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
-// ── Generate time options (30-minute intervals) ─────────────────────────────
+// ── Generate time options: 7:00 AM – 9:00 PM (30-min intervals) ─────────────
 function generateTimeOptions(minTime = null) {
   const options = [];
-  for (let hour = 0; hour < 24; hour++) {
+  for (let hour = 7; hour <= 21; hour++) {
     for (let minute of [0, 30]) {
+      if (hour === 21 && minute === 30) continue; // cap at 21:00
       const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
       const isDisabled = minTime && timeString < minTime;
       options.push({ value: timeString, disabled: isDisabled });
@@ -117,73 +121,6 @@ function generateTimeOptions(minTime = null) {
   return options;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DUMMY DATA (remove when backend ready)
-// ─────────────────────────────────────────────────────────────────────────────
-const DUMMY_PENDING = [
-  {
-    id: 1, type: "pickup", name: "Starbucks Corporation",
-    address: "Marikina City, Metro Manila",
-    pref_date: "2026-04-29", time_slot_start: "13:00", time_slot_end: "17:00",
-    food_items: "Canned Sardines | 680 pcs | Preserved Food",
-    source: "food_donation", donation_id: 2,
-  },
-  {
-    id: 2, type: "pickup", name: "Jollibee España",
-    address: "Marikina City, Metro Manila",
-    pref_date: "2026-05-01", time_slot_start: "13:00", time_slot_end: "17:00",
-    food_items: "Chicken Joy | 200 meals | Meat",
-    source: "food_donation", donation_id: 3,
-  },
-  {
-    id: 3, type: "deliver", name: "Barangay Poblacion Relief",
-    address: "Marikina City, Metro Manila",
-    pref_date: "2026-05-02", time_slot_start: "13:00", time_slot_end: "17:00",
-    food_items: "Bread | 1000 pcs | Bakery",
-    source: "donation_drive", drive_id: 10,
-  },
-];
-
-const DUMMY_TRUCKS = [
-  {
-    id: 1, unit_number: "SD01", vehicle_type: "Refrigerated Truck",
-    capacity: 1200, current_address: "Pasay Taft Ave",
-    categories: ["Dry Goods","Canned Goods","Frozen Foods"],
-    source: "manual",
-    schedule: [
-      { id: 101, stop_type: "PICKUP", name: "Starbucks Corp", address: "Marikina City", date: "2026-04-29", time_slot_start: "13:00", time_slot_end: "17:00", food_type: "Preserved Food", food_name: "Canned Sardines", qty: "680", unit: "pcs" },
-      { id: 102, stop_type: "DELIVER", name: "BGC Shelter", address: "BGC, Taguig", date: "2026-04-30", time_slot_start: "09:00", time_slot_end: "12:00", food_type: "Preserved Food", food_name: "Canned Sardines", qty: "680", unit: "pcs" },
-    ],
-  },
-  {
-    id: 2, unit_number: "TR01", vehicle_type: "Refrigerated Truck",
-    capacity: 1200, current_address: "Pasay Taft Ave",
-    categories: ["Fresh Produce","Meat / Poultry"],
-    source: "service_donation", service_id: 3,
-    schedule: [
-      { id: 201, stop_type: "PICKUP", name: "Jollibee España", address: "Espana, Manila", date: "2026-04-26", time_slot_start: "10:00", time_slot_end: "12:00", food_type: "Meat", food_name: "Chicken Joy", qty: "200", unit: "meals" },
-      { id: 202, stop_type: "DELIVER", name: "Cubao Community Center", address: "Cubao, QC", date: "2026-04-27", time_slot_start: "13:00", time_slot_end: "15:00", food_type: "Meat", food_name: "Chicken Joy", qty: "200", unit: "meals" },
-      { id: 203, stop_type: "DELIVER", name: "Pasay Relocation Site", address: "Pasay City", date: "2026-04-28", time_slot_start: "15:00", time_slot_end: "17:00", food_type: "Meat", food_name: "Chicken Joy", qty: "100", unit: "meals" },
-    ],
-  },
-  {
-    id: 3, unit_number: "TR02", vehicle_type: "Refrigerated Truck",
-    capacity: 1200, current_address: "Pasay Taft Ave",
-    categories: ["Bakery","Grains & Cereals"],
-    source: "manual",
-    schedule: [
-      { id: 301, stop_type: "PICKUP", name: "McDonald's Philippines", address: "BGC, Taguig", date: "2026-04-26", time_slot_start: "08:00", time_slot_end: "10:00", food_type: "Grains & Cereals", food_name: "Burger Patties", qty: "300", unit: "pcs" },
-      { id: 302, stop_type: "DELIVER", name: "Barangay Poblacion Relief", address: "Poblacion, Makati", date: "2026-04-26", time_slot_start: "11:00", time_slot_end: "13:00", food_type: "Bakery", food_name: "Bread", qty: "1000", unit: "pcs" },
-      { id: 303, stop_type: "PICKUP", name: "Starbucks BGC", address: "BGC, Taguig", date: "2026-04-27", time_slot_start: "09:00", time_slot_end: "11:00", food_type: "Bakery", food_name: "Pastries", qty: "150", unit: "pcs" },
-    ],
-  },
-];
-
-// calendar occupancy: truck_id → [dates]
-const DUMMY_OCCUPANCY = {
-  2: ["2026-04-26","2026-04-27","2026-04-28"],
-  3: ["2026-04-26","2026-04-27"],
-};
 
 const EMPTY_TRUCK_FORM = {
   vehicle_type: "Refrigerated Truck",
@@ -568,6 +505,142 @@ function TruckCard({ truck, isManual, onScheduleChange, onRemoveTruck }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PHILIPPINES MAP (Leaflet)
+// ─────────────────────────────────────────────────────────────────────────────
+const TRUCK_COLORS = ["#2563eb","#7c3aed","#0891b2","#0d9488","#1d4ed8","#6d28d9"];
+
+function TruckMap({ trucks, pending }) {
+  const mapRef     = useRef(null);
+  const leafletRef = useRef(null);
+  const markersRef = useRef([]);
+  const linesRef   = useRef([]);
+  const [leafletReady, setLeafletReady] = useState(false);
+
+  // Load Leaflet from CDN once
+  useEffect(() => {
+    if (window.L) { setLeafletReady(true); return; }
+
+    const link = document.createElement("link");
+    link.rel  = "stylesheet";
+    link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    document.head.appendChild(link);
+
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    script.onload = () => setLeafletReady(true);
+    document.head.appendChild(script);
+  }, []);
+
+  // Init map once Leaflet is ready
+  useEffect(() => {
+    if (!leafletReady || leafletRef.current) return;
+    const L = window.L;
+    const map = L.map("truck-map", { center: [14.5995, 120.9842], zoom: 11 });
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+      maxZoom: 18,
+    }).addTo(map);
+    leafletRef.current = map;
+  }, [leafletReady]);
+
+  // Re-draw markers and routes whenever data changes
+  useEffect(() => {
+    if (!leafletRef.current || !leafletReady) return;
+    const L   = window.L;
+    const map = leafletRef.current;
+
+    // Clear old markers and lines
+    markersRef.current.forEach(m => m.remove());
+    linesRef.current.forEach(l => l.remove());
+    markersRef.current = [];
+    linesRef.current   = [];
+
+    // Helper: create colored circle marker
+    const dot = (lat, lng, color, label) =>
+      L.circleMarker([lat, lng], {
+        radius: 10, fillColor: color, color: "#fff",
+        weight: 2, opacity: 1, fillOpacity: 0.9,
+      }).bindPopup(`<b>${label}</b>`);
+
+    // Draw trucks (current position = last stop or base coords)
+    trucks.forEach((truck, idx) => {
+      const color   = TRUCK_COLORS[idx % TRUCK_COLORS.length];
+      const lastStop = truck.schedule[truck.schedule.length - 1];
+      const tLat = lastStop?.lat ?? truck.lat;
+      const tLng = lastStop?.lng ?? truck.lng;
+
+      if (tLat && tLng) {
+        // Truck base/current marker
+        const truckIcon = L.divIcon({
+          html: `<div style="background:${color};color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3)">${truck.unit_number}</div>`,
+          className: "",
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+        });
+        const m = L.marker([tLat, tLng], { icon: truckIcon })
+          .bindPopup(`<b>${truck.unit_number}</b><br>${truck.vehicle_type}<br>${truck.current_address}`)
+          .addTo(map);
+        markersRef.current.push(m);
+      }
+
+      // Draw route line through all stops that have coords
+      const routeCoords = truck.schedule
+        .filter(s => s.lat && s.lng)
+        .map(s => [s.lat, s.lng]);
+
+      if (tLat && tLng && routeCoords.length) {
+        const line = L.polyline([[tLat, tLng], ...routeCoords], {
+          color, weight: 3, opacity: 0.7, dashArray: "6,4",
+        }).addTo(map);
+        linesRef.current.push(line);
+      }
+
+      // Stop markers along the route
+      truck.schedule.forEach((stop, si) => {
+        if (!stop.lat || !stop.lng) return;
+        const stopColor = stop.stop_type === "PICKUP" ? "#16a34a" : "#dc2626";
+        const sm = dot(stop.lat, stop.lng, stopColor,
+          `${si + 1}. ${stop.stop_type} — ${stop.name}<br>${stop.address}<br>${stop.date ?? ""}`)
+          .addTo(map);
+        markersRef.current.push(sm);
+      });
+    });
+
+    // Pending stop markers (no truck assigned yet)
+    pending.forEach(p => {
+      if (!p.lat || !p.lng) return;
+      const color = p.type === "pickup" ? "#16a34a" : "#dc2626";
+      const pm = L.circleMarker([p.lat, p.lng], {
+        radius: 8, fillColor: color, color: "#fff",
+        weight: 2, opacity: 1, fillOpacity: 0.6,
+        dashArray: "4,4",
+      }).bindPopup(`<b>[Unassigned] ${p.type.toUpperCase()}</b><br>${p.name}<br>${p.address}`).addTo(map);
+      markersRef.current.push(pm);
+    });
+
+  }, [trucks, pending, leafletReady]);
+
+  return (
+    <section className="to-calendar-section" style={{ marginTop: 32 }}>
+      <h2 className="to-section-title">
+        <span className="material-symbols-rounded" style={{ fontSize: 22, verticalAlign: "middle", marginRight: 6 }}>map</span>
+        Philippines Route Map
+      </h2>
+      <p style={{ fontSize: 13, color: "#888", marginBottom: 12 }}>
+        <span style={{ display:"inline-block", width:10, height:10, borderRadius:"50%", background:"#16a34a", marginRight:4 }} />Pick Up &nbsp;
+        <span style={{ display:"inline-block", width:10, height:10, borderRadius:"50%", background:"#dc2626", marginRight:4 }} />Deliver &nbsp;
+        <span style={{ display:"inline-block", width:10, height:10, borderRadius:"50%", background:"#888", marginRight:4, opacity:.4 }} />Unassigned (dashed border)
+      </p>
+      <div
+        id="truck-map"
+        ref={mapRef}
+        style={{ width: "100%", height: 520, borderRadius: 12, border: "1.5px solid #e0d5c5", overflow: "hidden" }}
+      />
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Staff_TruckOptimization() {
@@ -595,22 +668,18 @@ export default function Staff_TruckOptimization() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    try {
-      const [pendRes, truckRes, occRes] = await Promise.all([
-        api.get("/staff/truck-optimization/pending-stops"),
-        api.get("/staff/truck-optimization/trucks"),
-        api.get("/staff/truck-optimization/occupancy"),
-      ]);
-      setPending(pendRes.data);
-      setTrucks(truckRes.data);
-      setOccupancy(occRes.data);
-    } catch {
-      setPending(DUMMY_PENDING);
-      setTrucks(DUMMY_TRUCKS);
-      setOccupancy(DUMMY_OCCUPANCY);
-    } finally {
-      setLoading(false);
-    }
+    const [pendRes, truckRes, occRes] = await Promise.allSettled([
+      api.get("/staff/truck-optimization/pending-stops"),
+      api.get("/staff/truck-optimization/trucks"),
+      api.get("/staff/truck-optimization/occupancy"),
+    ]);
+    if (pendRes.status  === "fulfilled") setPending(pendRes.value.data);
+    if (truckRes.status === "fulfilled") setTrucks(truckRes.value.data);
+    if (occRes.status   === "fulfilled") setOccupancy(occRes.value.data);
+    if (pendRes.status  === "rejected")  console.error("pending-stops failed:",  pendRes.reason);
+    if (truckRes.status === "rejected")  console.error("trucks failed:",          truckRes.reason);
+    if (occRes.status   === "rejected")  console.error("occupancy failed:",       occRes.reason);
+    setLoading(false);
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -710,13 +779,14 @@ export default function Staff_TruckOptimization() {
     }));
   };
 
-  // Get min time for today's date
+  // Get min time: always at least 07:00; if today, also at least current time
   const getMinTimeForDate = (dateStr) => {
     const today = getMinDate();
     if (dateStr === today) {
-      return getCurrentTimeRounded();
+      const current = getCurrentTimeRounded();
+      return current > OPERATING_START ? current : OPERATING_START;
     }
-    return null;
+    return OPERATING_START;
   };
 
   const filteredPending = pending.filter(p => {
@@ -943,6 +1013,10 @@ export default function Staff_TruckOptimization() {
             </div>
           )}
         </section>
+
+        <div className="to-section-divider" />
+
+        <TruckMap trucks={trucks} pending={pending} />
 
         <div className="to-section-divider" />
 
