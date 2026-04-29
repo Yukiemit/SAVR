@@ -14,7 +14,7 @@ export default function Register() {
           <a href="/">Home</a>
           <a href="/about">About</a>
           <a href="/partners">Partners</a>
-          <a href="/media">Media</a>
+          <a href="/mediapg">Media</a>
           <a href="/contact">Contact</a>
         </div>
       </nav>

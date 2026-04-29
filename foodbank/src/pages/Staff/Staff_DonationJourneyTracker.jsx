@@ -446,12 +446,14 @@ function DonationCard({ donation, onAccept, onDecline, onReceived, onCancelled, 
         </button>
       </div>
 
-      {/* Stage 1 */}
+      {/* Stage 1 — label changes based on mode */}
       <div className={`djt-stage ${getStageClass(stages.preparing.status)}`}>
         <StageIcon stage="preparing" status={stages.preparing.status} />
         <div className="djt-stage-body">
           <div className="djt-stage-top">
-            <span className="djt-stage-title">Preparing Donation</span>
+            <span className="djt-stage-title">
+              {mode === "pickup" ? "Pick Up Donation" : "Donation Delivery"}
+            </span>
             <span className="djt-stage-time">
               <span className="material-symbols-rounded djt-time-icon">calendar_today</span>
               {fmtDateTime(stages.preparing.timestamp)}
@@ -471,12 +473,14 @@ function DonationCard({ donation, onAccept, onDecline, onReceived, onCancelled, 
         </div>
       </div>
 
-      {/* Stage 2 */}
+      {/* Stage 2 — label changes based on mode */}
       <div className={`djt-stage ${getStageClass(stages.transit.status)}`}>
         <StageIcon stage="transit" status={stages.transit.status === "cancelled" ? "cancelled" : stages.transit.status} />
         <div className="djt-stage-body">
           <div className="djt-stage-top">
-            <span className="djt-stage-title">Delivery in Transit</span>
+            <span className="djt-stage-title">
+              {mode === "pickup" ? "Pick Up in Transit" : "Waiting for the Delivery"}
+            </span>
             <span className="djt-stage-time">
               <span className="material-symbols-rounded djt-time-icon">calendar_today</span>
               {fmtDateTime(stages.transit.timestamp)}
@@ -496,7 +500,7 @@ function DonationCard({ donation, onAccept, onDecline, onReceived, onCancelled, 
         </div>
       </div>
 
-      {/* Stage 3 */}
+      {/* Stage 3 — always Donation Received */}
       <div className={`djt-stage ${getStageClass(stages.received.status)}`}>
         <StageIcon stage="received" status={stages.received.status} />
         <div className="djt-stage-body">
@@ -721,7 +725,7 @@ function BeneficiaryStatusCard({ drive, onReceived, onCancelled }) {
           {transitStatus === "awaiting_transit" && (
             <div className="djt-stage-actions">
               <button className="djt-received-btn" onClick={() => onReceived(drive.id)}>
-                <span className="material-symbols-rounded">check_circle</span> Received
+                <span className="material-symbols-rounded">check_circle</span> Delivered
               </button>
               <button className="djt-cancelled-transit-btn" onClick={() => onCancelled(drive.id)}>
                 <span className="material-symbols-rounded">cancel</span> Canceled
@@ -731,12 +735,12 @@ function BeneficiaryStatusCard({ drive, onReceived, onCancelled }) {
         </div>
       </div>
 
-      {/* Stage 3 — Donation Received */}
+      {/* Stage 3 — Donation Delivered */}
       <div className={`djt-stage ${getStageClass(receivedStatus)}`}>
         <StageIcon stage="received" status={receivedStatus} />
         <div className="djt-stage-body">
           <div className="djt-stage-top">
-            <span className="djt-stage-title">Donation Received</span>
+            <span className="djt-stage-title">Donation Delivered</span>
             <span className="djt-stage-time">
               <span className="material-symbols-rounded djt-time-icon">calendar_today</span>
               {drive.received_at ? fmtDateTime(drive.received_at) : "--/--/---- · --:--"}

@@ -92,14 +92,30 @@ const GOOD_FOR_OPTIONS = [
 // ─────────────────────────────────────────────────────────────────────────────
 // FOOD ALLOCATION PANEL (right-side of the modal for food requests)
 // ─────────────────────────────────────────────────────────────────────────────
+// Maps beneficiary food_type values → one or more inventory category names.
+// "Any Meals" / null → show everything.
+const FOOD_TYPE_MAP = {
+    "Fresh Produce":   ["Fruits", "Vegetables"],
+    "Dairy Products":  ["Dairy"],
+    "Meats & Fish":    ["Meat"],
+    "Any Meals":       null,   // null = match all
+};
+
+function resolveInventoryTypes(primaryFoodType) {
+    if (!primaryFoodType) return null;
+    if (primaryFoodType in FOOD_TYPE_MAP) return FOOD_TYPE_MAP[primaryFoodType];
+    return [primaryFoodType]; // exact match (e.g. "Canned Goods")
+}
+
 function FoodAllocationPanel({ selected, allocations, setAllocations }) {
     // "selected" is the donation request; food_type is the primary filter
-    const primaryFoodType = selected?.food_type || "";         // e.g. "Canned Goods"
+    const primaryFoodType = selected?.food_type || "";         // e.g. "Fresh Produce"
+    const resolvedTypes   = resolveInventoryTypes(primaryFoodType); // e.g. ["Fruits","Vegetables"]
 
     const [viewAll,      setViewAll]      = useState(false);   // toggle "View Other Food Types"
     const [search,       setSearch]       = useState("");
     const [goodFor,      setGoodFor]      = useState("");
-    const [typeFilter,   setTypeFilter]   = useState(primaryFoodType);
+    const [typeFilter,   setTypeFilter]   = useState("");
 
     // ── Real inventory from API (only items with stock > 0) ──
     const [inventory, setInventory] = useState([]);
@@ -115,14 +131,21 @@ function FoodAllocationPanel({ selected, allocations, setAllocations }) {
     // Filter inventory rows
     const visible = useMemo(() => {
         return inventory.filter((item) => {
-            const matchType    = viewAll
-                ? (typeFilter ? item.food_type === typeFilter : true)
-                : item.food_type === primaryFoodType;
+            let matchType;
+            if (viewAll) {
+                // "View Other Food Types" mode — respect the type chip filter
+                matchType = typeFilter ? item.food_type === typeFilter : true;
+            } else {
+                // Default mode — show items matching the resolved inventory categories
+                matchType = resolvedTypes === null
+                    ? true
+                    : resolvedTypes.includes(item.food_type);
+            }
             const matchSearch  = !search || item.food_name.toLowerCase().includes(search.toLowerCase());
             const matchGoodFor = isGoodFor(item.expiration_date, goodFor);
             return matchType && matchSearch && matchGoodFor;
         });
-    }, [inventory, viewAll, typeFilter, primaryFoodType, search, goodFor]);
+    }, [inventory, viewAll, typeFilter, resolvedTypes, search, goodFor]);
 
     // qty helpers
     const getQty = (id) => allocations[id]?.qty ?? 0;
@@ -156,7 +179,7 @@ function FoodAllocationPanel({ selected, allocations, setAllocations }) {
                     className="fa-view-other-btn"
                     onClick={() => {
                         setViewAll((v) => !v);
-                        setTypeFilter(viewAll ? primaryFoodType : "");
+                        setTypeFilter("");
                     }}
                 >
                     {viewAll ? "← Back to " + primaryFoodType : "View Other Food Types"}
@@ -382,16 +405,20 @@ export default function Staff_DonationRequest() {
             setModalError("Please fill in all required fields.");
             return;
         }
-        setSaving(true);
 
-        // Build food_allocations array for backend
-        // TODO: backend endpoint /staff/beneficiary-requests/:id/allocate should accept:
-        //   { drive_title, goal, start_date, end_date, food_allocations: [{ inventory_id, qty }] }
+        // For food requests, at least one item must have a quantity selected
         const food_allocations = selected?.type === "food"
             ? Object.values(allocations)
                 .filter((a) => a.qty > 0)
                 .map((a) => ({ inventory_id: a.id, qty: a.qty }))
             : [];
+
+        if (selected?.type === "food" && food_allocations.length === 0) {
+            setModalError("Please select at least one food item to allocate.");
+            return;
+        }
+
+        setSaving(true);
 
         try {
             await api.post(`/staff/beneficiary-requests/${selected.id}/allocate`, {
