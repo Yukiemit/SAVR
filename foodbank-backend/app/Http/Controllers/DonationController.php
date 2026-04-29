@@ -10,6 +10,7 @@ use App\Models\DonationDriveItem;
 use App\Models\BeneficiaryRequest;
 use App\Models\FoodInventory;
 use App\Models\DonationDelivery;
+use App\Models\TruckStop;
 
 class DonationController extends Controller
 {
@@ -233,6 +234,30 @@ class DonationController extends Controller
         $newStatus = $request->input('status', $oldStatus);
 
         $drive->update($request->all());
+
+        // ── CREATE TRUCK STOP when drive becomes "OnGoing" ──
+        if ($newStatus === 'OnGoing' && $oldStatus !== 'OnGoing') {
+            // Check if a truck stop already exists for this drive
+            $existingStop = TruckStop::where('source', 'donation_drive')
+                ->where('reference_id', $drive->id)
+                ->first();
+
+            if (!$existingStop) {
+                TruckStop::create([
+                    'truck_id'        => null,  // unassigned
+                    'stop_type'       => 'DELIVER',
+                    'name'            => $drive->drive_title,
+                    'address'         => $drive->address,
+                    'date'            => $drive->start_date,
+                    'time_slot_start' => '09:00',
+                    'time_slot_end'   => '17:00',
+                    'food_items'      => '',
+                    'source'          => 'donation_drive',
+                    'reference_id'    => $drive->id,
+                    'status'          => 'pending',
+                ]);
+            }
+        }
 
         // ── CASCADE: when drive becomes "Done", remove its request from Allocated list ──
         if ($newStatus === 'Done' && $oldStatus !== 'Done') {

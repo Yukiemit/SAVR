@@ -9,6 +9,7 @@ use App\Models\FoodDonationItem;
 use App\Models\FoodDonationRecord;
 use App\Models\FoodDonationRecordItem;
 use App\Models\FoodInventory;
+use App\Models\TruckStop;
 
 class FoodDonationController extends Controller
 {
@@ -311,10 +312,11 @@ class FoodDonationController extends Controller
      * POST /staff/donations/journey/from-donor/{id}/accept
      * Staff accepts the donation — moves to "In Transit" stage.
      * Records accepted_at timestamp. Does NOT touch inventory yet.
+     * Also creates a PICKUP truck_stop for truck optimization.
      */
     public function acceptDonorJourney($id)
     {
-        $record = FoodDonationRecord::findOrFail($id);
+        $record = FoodDonationRecord::with('items')->findOrFail($id);
 
         if ($record->status !== 'pending') {
             return response()->json(['message' => 'Donation is not pending.'], 422);
@@ -326,6 +328,31 @@ class FoodDonationController extends Controller
             'status'      => 'accepted',
             'accepted_at' => $now,
         ]);
+
+        // Auto-create a PICKUP truck stop if one doesn't exist
+        $existingStop = TruckStop::where('source', 'food_donation')
+            ->where('reference_id', $record->id)
+            ->first();
+
+        if (!$existingStop) {
+            TruckStop::create([
+                'truck_id'        => null,  // unassigned
+                'stop_type'       => 'PICKUP',
+                'name'            => $record->user?->name ?? 'Unknown Donor',
+                'address'         => $record->mode === 'pickup' ? $record->pickup_address : $record->delivery_address,
+                'date'            => $record->preferred_date,
+                'time_slot_start' => $record->time_slot_start,
+                'time_slot_end'   => $record->time_slot_end,
+                'food_items'      => $record->items->map(fn($i) => "{$i->food_name} | {$i->quantity} {$i->unit} | {$i->category}")->join(' · '),
+                'food_name'       => $record->items->first()?->food_name,
+                'food_type'       => $record->items->first()?->category,
+                'qty'             => (string)($record->items->first()?->quantity),
+                'unit'            => $record->items->first()?->unit,
+                'source'          => 'food_donation',
+                'reference_id'    => $record->id,
+                'status'          => 'pending',
+            ]);
+        }
 
         Cache::forget('food_donation_record_stats');
 

@@ -11,6 +11,7 @@ use App\Http\Controllers\DonorController;
 use App\Http\Controllers\ServiceDonationController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\TruckOptimizationController;
 
 // ── AUTH ROUTES ──────────────────────────────────────────────────────────────
 Route::post('/register',         [AuthController::class, 'register']);
@@ -120,6 +121,60 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications',                 fn() => response()->json([]));
     Route::post('/notifications/mark-all-read',  fn() => response()->json(['message' => 'ok']));
     Route::post('/notifications/{id}/mark-read', fn() => response()->json(['message' => 'ok']));
+
+    // ── STAFF — Donation Requests (beneficiary requests) ─────────────────────────
+    Route::get('/staff/donation-requests',                  [DonationController::class, 'getRequests']);
+    Route::get('/staff/donation-requests/stats',            [DonationController::class, 'getRequestStats']);
+    Route::post('/staff/donation-requests/{id}/allocate',   [DonationController::class, 'allocateRequest']);
+    Route::post('/staff/donation-requests/{id}/unallocate', [DonationController::class, 'unallocateRequest']);
+    Route::post('/staff/donation-requests/{id}/decline',    [DonationController::class, 'declineRequest']);
+    Route::post('/staff/donation-requests/{id}/done',       [DonationController::class, 'doneRequest']);
+
+    // ── STAFF — Donation Drives ───────────────────────────────────────────────────
+    Route::get('/staff/donation-drives',         [DonationController::class, 'getDrives']);
+    Route::get('/staff/donation-drives/stats',   [DonationController::class, 'getDriveStats']);
+    Route::post('/staff/donation-drives',        [DonationController::class, 'createDrive']);
+    Route::put('/staff/donation-drives/{id}',    [DonationController::class, 'updateDrive']);
+    Route::delete('/staff/donation-drives/{id}', [DonationController::class, 'deleteDrive']);
+
+    // ── STAFF — Truck Optimization ────────────────────────────────────────────
+    Route::get('/staff/truck-optimization/pending-stops',      [TruckOptimizationController::class, 'getPendingStops']);
+    Route::get('/staff/truck-optimization/trucks',             [TruckOptimizationController::class, 'getTrucks']);
+    Route::get('/staff/truck-optimization/occupancy',          [TruckOptimizationController::class, 'getOccupancy']);
+    Route::post('/staff/truck-optimization/auto-assign',       [TruckOptimizationController::class, 'autoAssign']);
+    Route::post('/staff/truck-optimization/assign-stop',       [TruckOptimizationController::class, 'assignStop']);
+    Route::put('/staff/truck-optimization/trucks/{id}/schedule', [TruckOptimizationController::class, 'updateSchedule']);
+    Route::post('/staff/truck-optimization/trucks',            [TruckOptimizationController::class, 'storeTruck']);
+    Route::delete('/staff/truck-optimization/trucks/{id}',     [TruckOptimizationController::class, 'destroyTruck']);
+
+    // ── STAFF — Beneficiary Requests ─────────────────────────────────────────────
+    Route::get('/staff/beneficiary-requests',                  [DonationController::class, 'getBeneficiaryRequests']);
+    Route::get('/staff/beneficiary-requests/stats',            [DonationController::class, 'getBeneficiaryRequestStats']);
+    Route::post('/staff/beneficiary-requests/{id}/allocate',   [DonationController::class, 'allocateBeneficiaryRequest']);
+    Route::post('/staff/beneficiary-requests/{id}/reject',     [DonationController::class, 'rejectBeneficiaryRequest']);
+
+    // ── STAFF — Food Inventory (CRUD) ────────────────────────────────────────────
+    Route::get('/staff/inventory/food',         [DonationController::class, 'getInventory']);
+    Route::post('/staff/inventory/food',        [DonationController::class, 'storeInventory']);
+    Route::put('/staff/inventory/food/{id}',    [DonationController::class, 'updateInventory']);
+    Route::delete('/staff/inventory/food/{id}', [DonationController::class, 'destroyInventory']);
+
+    // ── STAFF — Donation Journey Tracker: From Donor ──────────────────────────────
+    Route::get('/staff/donations/journey/from-donor',                    [FoodDonationController::class, 'getDonorJourney']);
+    Route::post('/staff/donations/journey/from-donor/{id}/accept',       [FoodDonationController::class, 'acceptDonorJourney']);
+    Route::post('/staff/donations/journey/from-donor/{id}/received',     [FoodDonationController::class, 'receivedDonorJourney']);
+    Route::post('/staff/donations/journey/from-donor/{id}/decline',      [FoodDonationController::class, 'declineDonorJourney']);
+    Route::post('/staff/donations/journey/from-donor/{id}/cancel-transit',[FoodDonationController::class, 'cancelDonorJourney']);
+
+    // ── STAFF — Donation Journey Tracker: To Beneficiary ─────────────────────────
+    // Drive-level actions (use drive ID)
+    Route::get('/staff/donations/journey/to-beneficiary',                      [DonationController::class, 'getBeneficiaryJourney']);
+    Route::post('/staff/donations/journey/to-beneficiary/{id}/accept',         [DonationController::class, 'acceptDriveJourney']);
+    Route::post('/staff/donations/journey/to-beneficiary/{id}/decline',        [DonationController::class, 'declineDriveJourney']);
+
+    // Delivery-level actions (use delivery ID)
+    Route::post('/staff/donations/journey/deliveries/{id}/received',           [DonationController::class, 'receivedDriveJourney']);
+    Route::post('/staff/donations/journey/deliveries/{id}/cancel',             [DonationController::class, 'cancelDriveJourney']);
 });
 
 // ── PAYMONGO WEBHOOK (public — no auth, PayMongo calls this) ─────────────────
@@ -131,47 +186,3 @@ Route::post('/admin/admin', [AuthController::class, 'createAdmin']);
 
 // ── PUBLIC — Beneficiary donation request ────────────────────────────────────
 Route::post('/donation-requests', [DonationController::class, 'submitRequest']);
-
-// ── STAFF — Donation Requests (beneficiary requests) ─────────────────────────
-Route::get('/staff/donation-requests',                  [DonationController::class, 'getRequests']);
-Route::get('/staff/donation-requests/stats',            [DonationController::class, 'getRequestStats']);
-Route::post('/staff/donation-requests/{id}/allocate',   [DonationController::class, 'allocateRequest']);
-Route::post('/staff/donation-requests/{id}/unallocate', [DonationController::class, 'unallocateRequest']);
-Route::post('/staff/donation-requests/{id}/decline',    [DonationController::class, 'declineRequest']);
-Route::post('/staff/donation-requests/{id}/done',       [DonationController::class, 'doneRequest']);
-
-// ── STAFF — Donation Drives ───────────────────────────────────────────────────
-Route::get('/staff/donation-drives',         [DonationController::class, 'getDrives']);
-Route::get('/staff/donation-drives/stats',   [DonationController::class, 'getDriveStats']);
-Route::post('/staff/donation-drives',        [DonationController::class, 'createDrive']);
-Route::put('/staff/donation-drives/{id}',    [DonationController::class, 'updateDrive']);
-Route::delete('/staff/donation-drives/{id}', [DonationController::class, 'deleteDrive']);
-
-// ── STAFF — Beneficiary Requests ─────────────────────────────────────────────
-Route::get('/staff/beneficiary-requests',                  [DonationController::class, 'getBeneficiaryRequests']);
-Route::get('/staff/beneficiary-requests/stats',            [DonationController::class, 'getBeneficiaryRequestStats']);
-Route::post('/staff/beneficiary-requests/{id}/allocate',   [DonationController::class, 'allocateBeneficiaryRequest']);
-Route::post('/staff/beneficiary-requests/{id}/reject',     [DonationController::class, 'rejectBeneficiaryRequest']);
-
-// ── STAFF — Food Inventory (CRUD) ────────────────────────────────────────────
-Route::get('/staff/inventory/food',         [DonationController::class, 'getInventory']);
-Route::post('/staff/inventory/food',        [DonationController::class, 'storeInventory']);
-Route::put('/staff/inventory/food/{id}',    [DonationController::class, 'updateInventory']);
-Route::delete('/staff/inventory/food/{id}', [DonationController::class, 'destroyInventory']);
-
-// ── STAFF — Donation Journey Tracker: From Donor ──────────────────────────────
-Route::get('/staff/donations/journey/from-donor',                    [FoodDonationController::class, 'getDonorJourney']);
-Route::post('/staff/donations/journey/from-donor/{id}/accept',       [FoodDonationController::class, 'acceptDonorJourney']);
-Route::post('/staff/donations/journey/from-donor/{id}/received',     [FoodDonationController::class, 'receivedDonorJourney']);
-Route::post('/staff/donations/journey/from-donor/{id}/decline',      [FoodDonationController::class, 'declineDonorJourney']);
-Route::post('/staff/donations/journey/from-donor/{id}/cancel-transit',[FoodDonationController::class, 'cancelDonorJourney']);
-
-// ── STAFF — Donation Journey Tracker: To Beneficiary ─────────────────────────
-// Drive-level actions (use drive ID)
-Route::get('/staff/donations/journey/to-beneficiary',                      [DonationController::class, 'getBeneficiaryJourney']);
-Route::post('/staff/donations/journey/to-beneficiary/{id}/accept',         [DonationController::class, 'acceptDriveJourney']);
-Route::post('/staff/donations/journey/to-beneficiary/{id}/decline',        [DonationController::class, 'declineDriveJourney']);
-
-// Delivery-level actions (use delivery ID)
-Route::post('/staff/donations/journey/deliveries/{id}/received',           [DonationController::class, 'receivedDriveJourney']);
-Route::post('/staff/donations/journey/deliveries/{id}/cancel',             [DonationController::class, 'cancelDriveJourney']);

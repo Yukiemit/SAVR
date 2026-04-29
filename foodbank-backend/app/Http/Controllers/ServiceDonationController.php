@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use App\Models\ServiceDonation;
 use App\Models\ServiceDonationRecord;
+use App\Models\Truck;
 
 class ServiceDonationController extends Controller
 {
@@ -216,6 +217,7 @@ class ServiceDonationController extends Controller
     // ══════════════════════════════════════════════════════════════════
     // STAFF — Accept a service donation
     //         → copies to service_donations (confirmed table)
+    //         → if transportation, also creates a truck for truck optimization
     // POST /api/staff/service-donations/{id}/accept
     // ══════════════════════════════════════════════════════════════════
     public function acceptRecord(Request $request, $id)
@@ -259,6 +261,19 @@ class ServiceDonationController extends Controller
             'staff_notes'          => $request->notes ?? null,
             'status'               => 'active',
         ]);
+
+        // If this is a Transportation service donation, create a truck
+        if ($record->service_tab === 'Transportation') {
+            Truck::create([
+                'unit_number'      => 'SD' . str_pad($record->id, 3, '0', STR_PAD_LEFT),
+                'vehicle_type'     => $record->vehicle_type ?? 'Delivery Van',
+                'capacity'         => $record->capacity,
+                'current_address'  => $record->address,
+                'categories'       => $record->transport_categories ?? [],
+                'source'           => 'service_donation',
+                'service_donation_id' => $record->id,
+            ]);
+        }
 
         $record->update([
             'status'      => 'accepted',
